@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AstroViewer FoV Audit</title>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: system-ui, sans-serif;
+      background: #111827;
+      color: #e5e7eb;
+    }
+
+    body {
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    button,
+    select {
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+
+    #viewer-container {
+      position: relative;
+      width: 1600px;
+      height: 900px;
+      /* max-width: 100%; */
+      background: black;
+      margin-bottom: 24px;
+    }
+
+    #astrocanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #results {
+      overflow-x: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th,
+    td {
+      border: 1px solid #374151;
+      padding: 6px 10px;
+      text-align: right;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th {
+      background: #1f2937;
+    }
+
+    .status {
+      margin-bottom: 12px;
+      color: #93c5fd;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>AstroViewer FoV Audit — 3.12.0</h1>
+
+  <div class="controls">
+    <label>
+      Viewport:
+      <select id="viewport">
+        <option value="960x540">960 × 540 (16:9)</option>
+        <option value="800x800">800 × 800 (1:1)</option>
+      </select>
+    </label>
+
+    <button id="run">Run FoV audit</button>
+  </div>
+
+  <div id="status" class="status">Initialising viewer…</div>
+
+  <div id="viewer-container">
+    <canvas id="astrocanvas"></canvas>
+  </div>
+
+  <div id="results"></div>
+
+  <script type="module" src="./fov.ts"></script>
+</body>
+
+</html>

@@ -1,0 +1,30 @@
+{
+  "name": "astro-viewer-demos",
+  "version": "1.0.0",
+  "description": "Executable demos and video tutorial scenarios for AstroViewer.",
+  "main": "index.js",
+  "scripts": {
+    "audit:fov": "vite src/audit",
+    "demo:a01": "vite src/demos/a01-navigation-fov",
+    "test:a01": "playwright test playwright/a01-navigation-fov.spec.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fab77/astro-viewer-demos.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fab77/astro-viewer-demos/issues"
+  },
+  "homepage": "https://github.com/fab77/astro-viewer-demos#readme",
+  "dependencies": {
+    "astro-viewer": "file:../astro-viewer/astro-viewer-3.13.0-snapshot.tgz"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}
