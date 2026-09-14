@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>AstroViewer A04 — Astronomical Catalogues</title>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+
+            background: #001032;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            height: 52px;
+            box-sizing: border-box;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 0 20px;
+
+            background: rgba(0, 10, 32, 0.96);
+            color: white;
+
+            border-bottom:
+                1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .status {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        #demo-cursor {
+            position: absolute;
+            z-index: 12;
+
+            width: 16px;
+            height: 16px;
+
+            border: 2px solid white;
+            border-radius: 50%;
+
+            transform: translate(-50%, -50%);
+
+            box-shadow:
+                0 0 0 2px rgba(0, 10, 32, 0.7);
+
+            pointer-events: none;
+        }
+
+        .demo-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-controls[hidden] {
+            display: none;
+        }
+
+        .demo-controls button {
+            padding: 6px 12px;
+
+            border:
+                1px solid rgba(255, 255, 255, 0.3);
+
+            border-radius: 5px;
+
+            background:
+                rgba(255, 255, 255, 0.08);
+
+            color: white;
+
+            font: inherit;
+            font-size: 13px;
+
+            cursor: pointer;
+        }
+
+        .demo-controls button:hover:not(:disabled) {
+            background:
+                rgba(255, 255, 255, 0.15);
+        }
+
+        .demo-controls button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        main {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+        }
+
+        #viewer-container {
+            position: absolute;
+            inset: 0;
+        }
+
+        #astrocanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #demo-label {
+            position: absolute;
+            left: 24px;
+            bottom: 24px;
+            z-index: 10;
+
+            min-width: 320px;
+            max-width: 590px;
+
+            padding: 14px 18px;
+
+            color: white;
+
+            background:
+                rgba(0, 10, 32, 0.84);
+
+            border:
+                1px solid rgba(255, 255, 255, 0.18);
+
+            border-radius: 8px;
+
+            backdrop-filter: blur(6px);
+
+            opacity: 0;
+            transform: translateY(8px);
+
+            transition:
+                opacity 250ms ease,
+                transform 250ms ease;
+
+            pointer-events: none;
+        }
+
+        #demo-label.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #demo-label .headline {
+            margin-bottom: 4px;
+
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        #demo-label .detail {
+            font-size: 13px;
+            line-height: 1.4;
+            opacity: 0.82;
+        }
+
+        #demo-label .api-command {
+            margin-top: 10px;
+            padding-top: 8px;
+
+            border-top:
+                1px solid rgba(255, 255, 255, 0.14);
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 12px;
+            line-height: 1.4;
+
+            color:
+                rgba(170, 215, 255, 0.95);
+
+            white-space: pre-wrap;
+        }
+
+        #metadata-hud {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            z-index: 10;
+
+            width: 315px;
+
+            padding: 15px 17px;
+
+            color: white;
+
+            background:
+                rgba(0, 10, 32, 0.82);
+
+            border:
+                1px solid rgba(255, 255, 255, 0.17);
+
+            border-radius: 8px;
+
+            backdrop-filter: blur(6px);
+
+            opacity: 0;
+            transform: translateY(-6px);
+
+            transition:
+                opacity 250ms ease,
+                transform 250ms ease;
+
+            pointer-events: none;
+        }
+
+        #metadata-hud.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .metadata-title {
+            margin-bottom: 3px;
+
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .metadata-subtitle {
+            margin-bottom: 12px;
+
+            font-size: 12px;
+            opacity: 0.62;
+        }
+
+        .metadata-row {
+            display: grid;
+            grid-template-columns: 92px 1fr;
+            gap: 12px;
+
+            padding: 3px 0;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .metadata-key {
+            opacity: 0.56;
+        }
+
+        .metadata-value {
+            text-align: right;
+            word-break: break-word;
+        }
+
+        #demo-title {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            color: white;
+
+            background:
+                rgba(0, 10, 32, 0.78);
+
+            backdrop-filter: blur(3px);
+
+            opacity: 0;
+            visibility: hidden;
+
+            transition:
+                opacity 500ms ease,
+                visibility 500ms ease;
+
+            pointer-events: none;
+        }
+
+        #demo-title.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .demo-title-product {
+            margin-bottom: 14px;
+
+            font-size: 15px;
+            font-weight: 500;
+
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+
+            opacity: 0.7;
+        }
+
+        .demo-title-name {
+            font-size: 34px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .demo-title-description {
+            margin-top: 12px;
+
+            font-size: 16px;
+            text-align: center;
+
+            opacity: 0.78;
+        }
+
+        .demo-title-id {
+            margin-top: 22px;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 13px;
+
+            opacity: 0.55;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="title">
+            AstroViewer — A04 Astronomical Catalogues
+        </div>
+
+        <div class="header-right">
+            <div id="demo-controls" class="demo-controls">
+                <button id="run-button" type="button">
+                    Run
+                </button>
+
+                <button id="pause-button" type="button" disabled>
+                    Pause
+                </button>
+
+                <button id="reset-button" type="button">
+                    Reset
+                </button>
+            </div>
+
+            <div id="status" class="status">
+                Initialising…
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="viewer-container">
+            <canvas id="astrocanvas"></canvas>
+
+            <div id="demo-label">
+                <div class="headline"></div>
+                <div class="detail"></div>
+                <div class="api-command"></div>
+            </div>
+
+            <div id="metadata-hud">
+                <div class="metadata-title">
+                    HSC source
+                </div>
+
+                <div class="metadata-subtitle">
+                    ESASky TAP metadata
+                </div>
+
+                <div class="metadata-row">
+                    <span class="metadata-key">match_id</span>
+                    <span id="meta-match-id" class="metadata-value">
+                        —
+                    </span>
+                </div>
+
+                <div class="metadata-row">
+                    <span class="metadata-key">RA</span>
+                    <span id="meta-ra" class="metadata-value">
+                        —
+                    </span>
+                </div>
+
+                <div class="metadata-row">
+                    <span class="metadata-key">Dec</span>
+                    <span id="meta-dec" class="metadata-value">
+                        —
+                    </span>
+                </div>
+
+                <div class="metadata-row">
+                    <span class="metadata-key">Kron radius</span>
+                    <span id="meta-kron" class="metadata-value">
+                        —
+                    </span>
+                </div>
+
+                <div class="metadata-row">
+                    <span class="metadata-key">CI</span>
+                    <span id="meta-ci" class="metadata-value">
+                        —
+                    </span>
+                </div>
+
+                <div class="metadata-row">
+                    <span class="metadata-key">Flux</span>
+                    <span id="meta-flux" class="metadata-value">
+                        —
+                    </span>
+                </div>
+
+                <div class="metadata-row">
+                    <span class="metadata-key">Extinction</span>
+                    <span id="meta-extinction" class="metadata-value">
+                        —
+                    </span>
+                </div>
+            </div>
+            <div id="demo-cursor" hidden></div>
+        </div>
+
+        <div id="demo-title">
+            <div class="demo-title-product">
+                AstroViewer Demo
+            </div>
+
+            <div class="demo-title-name">
+                Astronomical Catalogues
+            </div>
+
+            <div class="demo-title-description">
+                Explore Hubble Source Catalog data around M51
+            </div>
+
+            <div class="demo-title-id">
+                A04
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+</body>
+
+</html>

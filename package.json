@@ -10,7 +10,9 @@
     "demo:a02": "vite src/demos/a02-hips-surveys",
     "test:a02": "playwright test playwright/a02-hips-surveys.spec.ts --headed",
     "demo:a03": "vite src/demos/a03-grids-coordinates",
-    "test:a03": "playwright test playwright/a03-grids-coordinates.spec.ts --headed"
+    "test:a03": "playwright test playwright/a03-grids-coordinates.spec.ts --headed",
+    "demo:a04": "vite src/demos/a04-catalogues",
+    "test:a04": "playwright test playwright/a04-catalogues.spec.ts --headed"
   },
   "repository": {
     "type": "git",
