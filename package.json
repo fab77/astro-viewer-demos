@@ -8,7 +8,9 @@
     "demo:a01": "vite src/demos/a01-navigation-fov",
     "test:a01": "playwright test playwright/a01-navigation-fov.spec.ts --headed",
     "demo:a02": "vite src/demos/a02-hips-surveys",
-    "test:a02": "playwright test playwright/a02-hips-surveys.spec.ts --headed"
+    "test:a02": "playwright test playwright/a02-hips-surveys.spec.ts --headed",
+    "demo:a03": "vite src/demos/a03-grids-coordinates",
+    "test:a03": "playwright test playwright/a03-grids-coordinates.spec.ts --headed"
   },
   "repository": {
     "type": "git",

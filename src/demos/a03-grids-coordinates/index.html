@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>AstroViewer A03 — Grids & Coordinates</title>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #001032;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            height: 52px;
+            box-sizing: border-box;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 0 20px;
+
+            background: rgba(0, 10, 32, 0.96);
+            color: white;
+
+            border-bottom:
+                1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .status {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        #grid-labels {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+        }
+
+        #coords-grid-labels,
+        #healpix-grid-labels {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        #demo-cursor {
+            position: absolute;
+            z-index: 12;
+
+            width: 14px;
+            height: 14px;
+
+            border: 2px solid white;
+            border-radius: 50%;
+
+            transform: translate(-50%, -50%);
+
+            box-shadow:
+                0 0 0 2px rgba(0, 10, 32, 0.7);
+
+            pointer-events: none;
+        }
+
+        .demo-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-controls[hidden] {
+            display: none;
+        }
+
+        .demo-controls button {
+            padding: 6px 12px;
+
+            border:
+                1px solid rgba(255, 255, 255, 0.3);
+
+            border-radius: 5px;
+
+            background:
+                rgba(255, 255, 255, 0.08);
+
+            color: white;
+
+            font: inherit;
+            font-size: 13px;
+
+            cursor: pointer;
+        }
+
+        .demo-controls button:hover:not(:disabled) {
+            background:
+                rgba(255, 255, 255, 0.15);
+        }
+
+        .demo-controls button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        main {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+        }
+
+        #viewer-container {
+            position: absolute;
+            inset: 0;
+        }
+
+        #astrocanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #demo-label {
+            position: absolute;
+            left: 24px;
+            bottom: 24px;
+            z-index: 10;
+
+            min-width: 300px;
+            max-width: 560px;
+
+            padding: 14px 18px;
+
+            color: white;
+
+            background:
+                rgba(0, 10, 32, 0.84);
+
+            border:
+                1px solid rgba(255, 255, 255, 0.18);
+
+            border-radius: 8px;
+
+            backdrop-filter: blur(6px);
+
+            opacity: 0;
+            transform: translateY(8px);
+
+            transition:
+                opacity 250ms ease,
+                transform 250ms ease;
+
+            pointer-events: none;
+        }
+
+        #demo-label.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #demo-label .headline {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        #demo-label .detail {
+            font-size: 13px;
+            line-height: 1.4;
+            opacity: 0.82;
+        }
+
+        #demo-label .api-command {
+            margin-top: 10px;
+            padding-top: 8px;
+
+            border-top:
+                1px solid rgba(255, 255, 255, 0.14);
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 12px;
+            line-height: 1.4;
+
+            color:
+                rgba(170, 215, 255, 0.95);
+
+            white-space: pre-wrap;
+        }
+
+        #coordinate-hud {
+            position: absolute;
+            right: 24px;
+            top: 24px;
+            z-index: 10;
+
+            width: 290px;
+
+            padding: 14px 16px;
+
+            color: white;
+
+            background:
+                rgba(0, 10, 32, 0.78);
+
+            border:
+                1px solid rgba(255, 255, 255, 0.16);
+
+            border-radius: 8px;
+
+            backdrop-filter: blur(6px);
+
+            opacity: 0;
+            transform: translateY(-6px);
+
+            transition:
+                opacity 250ms ease,
+                transform 250ms ease;
+
+            pointer-events: none;
+        }
+
+        #coordinate-hud.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .hud-title {
+            margin-bottom: 8px;
+
+            font-size: 13px;
+            font-weight: 600;
+
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+
+            opacity: 0.72;
+        }
+
+        .hud-section+.hud-section {
+            margin-top: 12px;
+            padding-top: 10px;
+
+            border-top:
+                1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .hud-section-title {
+            margin-bottom: 5px;
+
+            font-size: 12px;
+            font-weight: 600;
+
+            opacity: 0.72;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .hud-key {
+            opacity: 0.58;
+        }
+
+        .hud-value {
+            text-align: right;
+        }
+
+        #demo-title {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            color: white;
+
+            background:
+                rgba(0, 10, 32, 0.78);
+
+            backdrop-filter: blur(3px);
+
+            opacity: 0;
+            visibility: hidden;
+
+            transition:
+                opacity 500ms ease,
+                visibility 500ms ease;
+
+            pointer-events: none;
+        }
+
+        #demo-title.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .demo-title-product {
+            margin-bottom: 14px;
+
+            font-size: 15px;
+            font-weight: 500;
+
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+
+            opacity: 0.7;
+        }
+
+        .demo-title-name {
+            font-size: 34px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .demo-title-description {
+            margin-top: 12px;
+
+            font-size: 16px;
+            text-align: center;
+
+            opacity: 0.78;
+        }
+
+        .demo-title-id {
+            margin-top: 22px;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 13px;
+
+            opacity: 0.55;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="title">
+            AstroViewer — A03 Grids & Coordinates
+        </div>
+
+        <div class="header-right">
+            <div id="demo-controls" class="demo-controls">
+                <button id="run-button" type="button">
+                    Run
+                </button>
+
+                <button id="pause-button" type="button" disabled>
+                    Pause
+                </button>
+
+                <button id="reset-button" type="button">
+                    Reset
+                </button>
+            </div>
+
+            <div id="status" class="status">
+                Initialising…
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="viewer-container">
+            <canvas id="astrocanvas"></canvas>
+
+            <div id="demo-label">
+                <div class="headline"></div>
+                <div class="detail"></div>
+                <div class="api-command"></div>
+            </div>
+
+            <div id="coordinate-hud">
+                <div class="hud-title">
+                    Astronomical Coordinates
+                </div>
+
+                <div class="hud-section">
+                    <div class="hud-section-title">
+                        Reference
+                    </div>
+
+                    <div class="hud-row">
+                        <span class="hud-key">Mode</span>
+                        <span id="coord-mode" class="hud-value">
+                            —
+                        </span>
+                    </div>
+                </div>
+
+                <div class="hud-section">
+                    <div class="hud-section-title">
+                        Center
+                    </div>
+
+                    <div class="hud-row">
+                        <span class="hud-key">RA</span>
+                        <span id="center-ra" class="hud-value">
+                            —
+                        </span>
+                    </div>
+
+                    <div class="hud-row">
+                        <span class="hud-key">Dec</span>
+                        <span id="center-dec" class="hud-value">
+                            —
+                        </span>
+                    </div>
+                </div>
+
+                <div id="cursor-section" class="hud-section" hidden>
+                    <div class="hud-section-title">
+                        Cursor
+                    </div>
+
+                    <div class="hud-row">
+                        <span class="hud-key">RA</span>
+                        <span id="cursor-ra" class="hud-value">
+                            —
+                        </span>
+                    </div>
+
+                    <div class="hud-row">
+                        <span class="hud-key">Dec</span>
+                        <span id="cursor-dec" class="hud-value">
+                            —
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div id="grid-labels">
+                <div id="coords-grid-labels"></div>
+                <div id="healpix-grid-labels"></div>
+            </div>
+
+            <div id="demo-cursor" hidden></div>
+        </div>
+
+        <div id="demo-title">
+            <div class="demo-title-product">
+                AstroViewer Demo
+            </div>
+
+            <div class="demo-title-name">
+                Grids &amp; Coordinates
+            </div>
+
+            <div class="demo-title-description">
+                Spatial reference and live astronomical coordinates
+            </div>
+
+            <div class="demo-title-id">
+                A03
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+</body>
+
+</html>
