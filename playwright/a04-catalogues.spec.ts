@@ -1,3 +1,5 @@
+/// <reference path="../src/demo-window.d.ts" />
+
 import { test, expect } from "@playwright/test";
 
 test.describe("A04 — Astronomical Catalogues", () => {
@@ -9,7 +11,13 @@ test.describe("A04 — Astronomical Catalogues", () => {
     await page.waitForFunction(() => window.astroViewerDemo?.ready === true);
 
     await page.evaluate(() => {
-      void window.astroViewerDemo!.runA04();
+      const runA04 = window.astroViewerDemo?.runA04;
+
+      if (!runA04) {
+        throw new Error("A04 demo API is not available.");
+      }
+
+      void runA04();
     });
 
     await page.waitForFunction(
@@ -23,7 +31,13 @@ test.describe("A04 — Astronomical Catalogues", () => {
     const finalState = await page.evaluate(() => {
       const demo = window.astroViewerDemo!;
 
-      const catalogue = demo.getCatalogue();
+      const getCatalogue = demo.getCatalogue;
+
+      if (!getCatalogue) {
+        throw new Error("Catalogue demo API is not available.");
+      }
+
+      const catalogue = getCatalogue();
 
       return {
         status: document.querySelector("#status")?.textContent,

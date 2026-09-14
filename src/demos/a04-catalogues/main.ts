@@ -1,3 +1,5 @@
+/// <reference path="../../demo-window.d.ts" />
+
 import {
   AstroViewer,
   ColumnType,
@@ -36,27 +38,6 @@ type CatalogueFixture = {
   rows: Array<Array<string | number>>;
 };
 
-declare global {
-  interface Window {
-    astroViewerDemo?: {
-      viewer: AstroViewer;
-      ready: boolean;
-      mode: DemoMode;
-
-      runA04: () => Promise<void>;
-      reset: () => Promise<void>;
-
-      getCatalogue: () => CatalogueGL | null;
-
-      showLabel: (
-        headline: string,
-        detail?: string,
-        apiCommand?: string,
-        durationMs?: number,
-      ) => Promise<void>;
-    };
-  }
-}
 
 function requiredElement<T extends Element>(
   selector: string,

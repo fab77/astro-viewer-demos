@@ -1,3 +1,5 @@
+/// <reference path="../src/demo-window.d.ts" />
+
 import { test, expect } from "@playwright/test";
 
 test.describe("A01 — Navigation & FoV", () => {
@@ -9,7 +11,13 @@ test.describe("A01 — Navigation & FoV", () => {
     await page.waitForFunction(() => window.astroViewerDemo?.ready === true);
 
     await page.evaluate(() => {
-      void window.astroViewerDemo!.runA01();
+      const runA01 = window.astroViewerDemo?.runA01;
+
+      if (!runA01) {
+        throw new Error("A01 demo API is not available.");
+      }
+
+      void runA01();
     });
 
     await page.waitForFunction(

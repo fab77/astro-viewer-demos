@@ -1,3 +1,5 @@
+/// <reference path="../../demo-window.d.ts" />
+
 import {
   AstroViewer,
   ColumnType,
@@ -37,27 +39,6 @@ type FootprintFixture = {
   rows: Array<Array<string | number>>;
 };
 
-declare global {
-  interface Window {
-    astroViewerDemo?: {
-      viewer: AstroViewer;
-      ready: boolean;
-      mode: DemoMode;
-
-      runA05: () => Promise<void>;
-      reset: () => Promise<void>;
-
-      getFootprintSet: () => FootprintSetGL | null;
-
-      showLabel: (
-        headline: string,
-        detail?: string,
-        apiCommand?: string,
-        durationMs?: number,
-      ) => Promise<void>;
-    };
-  }
-}
 
 function requiredElement<T extends Element>(
   selector: string,

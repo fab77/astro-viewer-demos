@@ -1,3 +1,5 @@
+/// <reference path="../src/demo-window.d.ts" />
+
 import { test, expect } from "@playwright/test";
 
 test.describe("A03 — Grids & Coordinates", () => {
@@ -9,7 +11,13 @@ test.describe("A03 — Grids & Coordinates", () => {
     await page.waitForFunction(() => window.astroViewerDemo?.ready === true);
 
     await page.evaluate(() => {
-      void window.astroViewerDemo!.runA03();
+      const runA03 = window.astroViewerDemo?.runA03;
+
+      if (!runA03) {
+        throw new Error("A03 demo API is not available.");
+      }
+
+      void runA03();
     });
 
     const canvas = page.locator("#astrocanvas");

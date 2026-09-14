@@ -1,3 +1,5 @@
+/// <reference path="../src/demo-window.d.ts" />
+
 import { test, expect } from "@playwright/test";
 
 test.describe("A02 — HiPS Surveys", () => {
@@ -9,7 +11,13 @@ test.describe("A02 — HiPS Surveys", () => {
     await page.waitForFunction(() => window.astroViewerDemo?.ready === true);
 
     await page.evaluate(() => {
-      void window.astroViewerDemo!.runA02();
+      const runA02 = window.astroViewerDemo?.runA02;
+
+      if (!runA02) {
+        throw new Error("A02 demo API is not available.");
+      }
+
+      void runA02();
     });
 
     await page.waitForFunction(

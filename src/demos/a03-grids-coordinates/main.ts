@@ -1,24 +1,9 @@
+/// <reference path="../../demo-window.d.ts" />
+
 import { AstroViewer, type PointCoordinates } from "astro-viewer";
 
 type DemoMode = "video" | "interactive";
 
-declare global {
-  interface Window {
-    astroViewerDemo?: {
-      viewer: AstroViewer;
-      ready: boolean;
-      mode: DemoMode;
-      runA03: () => Promise<void>;
-      reset: () => Promise<void>;
-      showLabel: (
-        headline: string,
-        detail?: string,
-        apiCommand?: string,
-        durationMs?: number,
-      ) => Promise<void>;
-    };
-  }
-}
 
 function requiredElement<T extends Element>(
   selector: string,
