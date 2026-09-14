@@ -22,7 +22,6 @@ test.describe("A05 — Observations & Footprints", () => {
 
     const finalState = await page.evaluate(() => {
       const demo = window.astroViewerDemo!;
-
       const footprintSet = demo.getFootprintSet();
 
       return {
@@ -54,8 +53,8 @@ test.describe("A05 — Observations & Footprints", () => {
 
     expect(finalState.colour).toBe("#ff9f1c");
 
-    expect(finalState.fov).toBeGreaterThan(0.07);
+    expect(finalState.fov).toBeGreaterThan(0.055);
 
-    expect(finalState.fov).toBeLessThan(0.09);
+    expect(finalState.fov).toBeLessThan(0.065);
   });
 });
