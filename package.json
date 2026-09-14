@@ -12,7 +12,9 @@
     "demo:a03": "vite src/demos/a03-grids-coordinates",
     "test:a03": "playwright test playwright/a03-grids-coordinates.spec.ts --headed",
     "demo:a04": "vite src/demos/a04-catalogues",
-    "test:a04": "playwright test playwright/a04-catalogues.spec.ts --headed"
+    "test:a04": "playwright test playwright/a04-catalogues.spec.ts --headed",
+    "demo:a05": "vite src/demos/a05-observations-footprints",
+    "test:a05": "playwright test playwright/a05-observations-footprints.spec.ts --headed"
   },
   "repository": {
     "type": "git",
