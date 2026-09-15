@@ -12,11 +12,18 @@ declare global {
     runA04?: () => Promise<void>;
     runA05?: () => Promise<void>;
     runA06?: () => Promise<void>;
+    runA07?: () => Promise<void>;
 
     reset: () => Promise<void>;
 
     getCatalogue?: () => CatalogueGL | null;
     getFootprintSet?: () => FootprintSetGL | null;
+
+    getCapturedState?: () => {
+      raDeg: number;
+      decDeg: number;
+      fovDeg: number;
+    } | null;
 
     showLabel?: (
       headline: string,

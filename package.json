@@ -16,7 +16,9 @@
     "demo:a05": "vite src/demos/a05-observations-footprints",
     "test:a05": "playwright test playwright/a05-observations-footprints.spec.ts --headed",
     "demo:a06": "vite src/demos/a06-interaction-colours",
-    "test:a06": "playwright test playwright/a06-interaction-colours.spec.ts --headed"
+    "test:a06": "playwright test playwright/a06-interaction-colours.spec.ts --headed",
+    "demo:a07": "vite src/demos/a07-scientific-view-state",
+    "test:a07": "playwright test playwright/a07-scientific-view-state.spec.ts --headed"
   },
   "repository": {
     "type": "git",
