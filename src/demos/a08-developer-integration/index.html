@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>AstroViewer A08 — Developer Integration</title>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #001032;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            height: 52px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: rgba(0, 10, 32, 0.96);
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .status {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .demo-controls[hidden] {
+            display: none;
+        }
+
+        .demo-controls button {
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            font: inherit;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .demo-controls button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        main {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+        }
+
+        #astrocanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #demo-label {
+            position: absolute;
+            left: 24px;
+            bottom: 24px;
+            z-index: 10;
+            min-width: 420px;
+            max-width: 680px;
+            padding: 14px 18px;
+            color: white;
+            background: rgba(0, 10, 32, 0.86);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            backdrop-filter: blur(6px);
+            opacity: 0;
+            transform: translateY(8px);
+            transition:
+                opacity 250ms ease,
+                transform 250ms ease;
+            pointer-events: none;
+        }
+
+        #demo-label.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .headline {
+            margin-bottom: 4px;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .detail {
+            font-size: 13px;
+            line-height: 1.4;
+            opacity: 0.82;
+        }
+
+        .api-command {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.14);
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.45;
+            color: rgba(170, 215, 255, 0.95);
+            white-space: pre-wrap;
+        }
+
+        #integration-panel {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            z-index: 10;
+            width: 300px;
+            padding: 16px 18px;
+            color: white;
+            background: rgba(0, 10, 32, 0.84);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            backdrop-filter: blur(6px);
+            opacity: 0;
+            transition: opacity 250ms ease;
+            pointer-events: none;
+        }
+
+        #integration-panel.visible {
+            opacity: 1;
+        }
+
+        .integration-title {
+            margin-bottom: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.72;
+        }
+
+        .integration-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 13px;
+            opacity: 0.42;
+            transition: opacity 250ms ease;
+        }
+
+        .integration-step.done {
+            opacity: 1;
+        }
+
+        .step-marker {
+            width: 18px;
+            font-family: "SFMono-Regular", Consolas, monospace;
+        }
+
+        .integration-step.done .step-marker::before {
+            content: "✓";
+        }
+
+        .integration-step:not(.done) .step-marker::before {
+            content: "○";
+        }
+
+        #demo-title {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            background: rgba(0, 10, 32, 0.78);
+            backdrop-filter: blur(3px);
+            opacity: 0;
+            visibility: hidden;
+            transition:
+                opacity 500ms ease,
+                visibility 500ms ease;
+            pointer-events: none;
+        }
+
+        #demo-title.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .demo-title-product {
+            margin-bottom: 14px;
+            font-size: 15px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .demo-title-name {
+            font-size: 34px;
+            font-weight: 600;
+        }
+
+        .demo-title-description {
+            margin-top: 12px;
+            font-size: 16px;
+            opacity: 0.78;
+        }
+
+        .demo-title-id {
+            margin-top: 22px;
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 13px;
+            opacity: 0.55;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="title">
+            AstroViewer — A08 Developer Integration
+        </div>
+
+        <div class="header-right">
+            <div id="demo-controls" class="demo-controls">
+                <button id="run-button">Run</button>
+                <button id="pause-button" disabled>Pause</button>
+                <button id="reset-button">Reset</button>
+            </div>
+
+            <div id="status" class="status">
+                Initialising…
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <canvas id="astrocanvas"></canvas>
+
+        <div id="integration-panel">
+            <div class="integration-title">
+                External application
+            </div>
+
+            <div id="step-import" class="integration-step">
+                <span class="step-marker"></span>
+                Import public package
+            </div>
+
+            <div id="step-viewer" class="integration-step">
+                <span class="step-marker"></span>
+                Create AstroViewer
+            </div>
+
+            <div id="step-hips" class="integration-step">
+                <span class="step-marker"></span>
+                Load HiPS survey
+            </div>
+
+            <div id="step-navigation" class="integration-step">
+                <span class="step-marker"></span>
+                Navigate &amp; set FoV
+            </div>
+
+            <div id="step-catalogue" class="integration-step">
+                <span class="step-marker"></span>
+                Add catalogue overlay
+            </div>
+        </div>
+
+        <div id="demo-label">
+            <div class="headline"></div>
+            <div class="detail"></div>
+            <div class="api-command"></div>
+        </div>
+
+        <div id="demo-title">
+            <div class="demo-title-product">
+                AstroViewer Demo
+            </div>
+
+            <div class="demo-title-name">
+                Developer Integration
+            </div>
+
+            <div class="demo-title-description">
+                Build an astronomical viewer using only the public package API
+            </div>
+
+            <div class="demo-title-id">
+                A08
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+</body>
+
+</html>
