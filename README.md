@@ -580,3 +580,42 @@ storyboard/astronomy.md
 ```
 
 for the evolving demo plan.
+## Portfolio visual capture
+
+A deterministic AstroViewer frame for the professional portfolio can be generated from the A07 demo without changing the demo itself:
+
+```bash
+npm run capture:portfolio
+```
+
+The command launches A07 locally, drives AstroViewer to the M51 scientific view (RA 202.469575°, Dec 47.195258°, FoV 0.5°), removes the demo-only overlays, and writes:
+
+```text
+portfolio-visuals/astroviewer-m51-hero.png
+```
+
+This image is intended as a static portfolio preview/fallback. The interactive AstroViewer demos remain the primary executable evidence.
+
+## Static build
+
+Build all demo applications as independent static sites:
+
+```bash
+npm run build
+```
+
+The command writes one self-contained output directory per demo under `dist/`:
+
+```text
+dist/
+├── a01-navigation-fov/
+├── a02-hips-surveys/
+├── a03-grids-coordinates/
+├── a04-catalogues/
+├── a05-observations-footprints/
+├── a06-interaction-colours/
+├── a07-scientific-view-state/
+└── a08-developer-integration/
+```
+
+Each directory can be deployed independently under any static web path. Asset URLs are relative, so the build does not depend on a particular host, domain, or portfolio application.

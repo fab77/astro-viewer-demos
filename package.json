@@ -20,7 +20,9 @@
     "demo:a07": "vite src/demos/a07-scientific-view-state",
     "test:a07": "playwright test playwright/a07-scientific-view-state.spec.ts --headed",
     "demo:a08": "vite src/demos/a08-developer-integration",
-    "test:a08": "playwright test playwright/a08-developer-integration.spec.ts --headed"
+    "test:a08": "playwright test playwright/a08-developer-integration.spec.ts --headed",
+    "capture:portfolio": "node scripts/capture-portfolio-visuals.mjs",
+    "build": "node scripts/build-demos.mjs"
   },
   "repository": {
     "type": "git",
