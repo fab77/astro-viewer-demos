@@ -621,7 +621,8 @@ async function initialiseDemo(): Promise<void> {
   const [loadedFixture] = await Promise.all([
     loadFixture(),
 
-    viewer.loadHiPS("https://alasky.cds.unistra.fr/SDSS/DR9/band-r/"),
+    // viewer.loadHiPS("https://alasky.cds.unistra.fr/SDSS/DR9/band-r/"),
+    viewer.loadHiPS("https://cdn.skies.esac.esa.int/DSSColor/")
   ]);
 
   fixture = loadedFixture;

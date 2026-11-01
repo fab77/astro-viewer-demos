@@ -38,7 +38,8 @@ type CatalogueFixture = {
   rows: Array<Array<string | number>>;
 };
 
-const SDSS_URL = "https://alasky.cds.unistra.fr/SDSS/DR9/band-r/";
+// const SDSS_URL = "https://alasky.cds.unistra.fr/SDSS/DR9/band-r/";
+const SDSS_URL = "https://cdn.skies.esac.esa.int/DSSColor/";
 
 const M51 = {
   ra: 202.469575,

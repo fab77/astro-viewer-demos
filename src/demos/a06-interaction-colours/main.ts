@@ -860,7 +860,8 @@ async function initialiseDemo(): Promise<void> {
 
     loadJson<FootprintFixture>("./hst_m51_observations.json"),
 
-    viewer.loadHiPS("https://alasky.cds.unistra.fr/SDSS/DR9/band-r/"),
+    // viewer.loadHiPS("https://alasky.cds.unistra.fr/SDSS/DR9/band-r/"),
+    viewer.loadHiPS("https://cdn.skies.esac.esa.int/DSSColor/")
   ]);
 
   catalogueFixture = loadedCatalogueFixture;

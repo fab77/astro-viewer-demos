@@ -4,7 +4,6 @@ import { AstroViewer, type HiPS } from "astro-viewer";
 
 type DemoMode = "video" | "interactive";
 
-
 function requiredElement<T extends Element>(
   selector: string,
   root: ParentNode = document,
@@ -58,17 +57,17 @@ controlsElement.hidden = demoMode === "video";
 
 const surveys = {
   sdss: {
-    name: "SDSS DR9 r",
+    name: "SDSS DR9 Color",
     wavelength: "Optical",
-    url: "https://alasky.cds.unistra.fr/SDSS/DR9/band-r/",
+    // url: "https://alasky.cds.unistra.fr/SDSS/DR9/band-r/",
+    url: "https://skies.esac.esa.int/SDSS9Color/",
   },
-
   galex: {
-    name: "GALEX FUV",
+    name: "GALEX GR6/7 Color",
     wavelength: "Ultraviolet",
-    url: "https://alasky.cds.unistra.fr/GALEX/GALEXGR6_7_FUV/",
+    // url: "https://alasky.cds.unistra.fr/GALEX/GALEXGR6_7_FUV/",
+    url: "https://stpubdata.s3.us-east-1.amazonaws.com/mast/skybackgrounds/GALEXColor",
   },
-
   spire: {
     name: "Herschel SPIRE 250 µm",
     wavelength: "Far infrared",
@@ -76,9 +75,10 @@ const surveys = {
   },
 
   xmm: {
-    name: "XMM EPIC-RGB",
+    name: "XMM-Newton EPIC-RGB",
     wavelength: "X-ray",
-    url: "https://alasky.cds.unistra.fr/SSC/xcatdb_P_XMM_PN_color/",
+    // url: "https://alasky.cds.unistra.fr/SSC/xcatdb_P_XMM_PN_color/",
+    url: "https://esdchips.esac.esa.int/XMM-Newton/EPIC-RGB/",
   },
 } as const;
 
@@ -311,7 +311,6 @@ async function runA02(): Promise<void> {
     galexLayer = await viewer.addHiPSFromUrl(surveys.galex.url);
     showOnly(galexLayer, [sdssLayer, galexLayer, spireLayer, xmmLayer]);
     await demoWait(3000);
-    
 
     await showLabel(
       "Herschel SPIRE 250 µm",

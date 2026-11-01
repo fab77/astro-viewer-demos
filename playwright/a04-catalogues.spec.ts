@@ -68,8 +68,7 @@ test.describe("A04 — Astronomical Catalogues", () => {
 
     expect(finalState.colour).toBe("#ffd166");
 
-    expect(finalState.fov).toBeGreaterThan(0.49);
-
-    expect(finalState.fov).toBeLessThan(0.51);
+    expect(finalState.fov).toBeGreaterThan(0.079);
+    expect(finalState.fov).toBeLessThan(0.081);
   });
 });

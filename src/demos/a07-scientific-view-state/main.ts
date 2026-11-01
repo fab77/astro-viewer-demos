@@ -411,7 +411,8 @@ window.astroViewerDemo = {
 async function initialiseDemo(): Promise<void> {
   statusElement.textContent = "Loading survey…";
 
-  await viewer.loadHiPS("https://alasky.cds.unistra.fr/SDSS/DR9/band-r/");
+  // await viewer.loadHiPS("https://alasky.cds.unistra.fr/SDSS/DR9/band-r/");
+  await viewer.loadHiPS("https://cdn.skies.esac.esa.int/DSSColor/");
 
   window.astroViewerDemo!.ready = true;
 

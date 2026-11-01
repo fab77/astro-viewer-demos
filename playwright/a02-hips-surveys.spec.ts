@@ -6,6 +6,23 @@ test.describe("A02 — HiPS Surveys", () => {
   test("runs the complete demo sequence", async ({ page }) => {
     test.setTimeout(120_000);
 
+    const galexTileResponses: number[] = [];
+    const galexTileFailures: string[] = [];
+
+    page.on("response", (response) => {
+      const url = response.url();
+
+      if (!url.includes("/GALEXColor/") || !url.includes("/Norder")) {
+        return;
+      }
+
+      galexTileResponses.push(response.status());
+
+      if (url.includes("//Norder")) {
+        galexTileFailures.push(url);
+      }
+    });
+
     await page.goto("http://localhost:5173/?mode=video");
 
     await page.waitForFunction(() => window.astroViewerDemo?.ready === true);
@@ -42,6 +59,13 @@ test.describe("A02 — HiPS Surveys", () => {
       };
     });
 
+    expect(galexTileResponses.length).toBeGreaterThan(0);
+
+    expect(
+      galexTileResponses.filter((status) => status === 200).length,
+    ).toBeGreaterThan(0);
+
+    expect(galexTileFailures).toEqual([]);
     expect(finalState.status).toBe("A02 complete");
     expect(finalState.activeHiPS).toBe(true);
     expect(finalState.layers).toBe(1);

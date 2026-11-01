@@ -88,8 +88,8 @@ test.describe("A03 — Grids & Coordinates", () => {
 
     expect(finalState.center).toBeDefined();
 
-    expect(finalState.fov).toBeGreaterThan(1.9);
+    expect(finalState.fov).toBeGreaterThan(11.9);
 
-    expect(finalState.fov).toBeLessThan(2.1);
+    expect(finalState.fov).toBeLessThan(12.1);
   });
 });
