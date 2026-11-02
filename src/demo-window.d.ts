@@ -14,6 +14,7 @@ declare global {
     runA06?: () => Promise<void>;
     runA07?: () => Promise<void>;
     runA08?: () => Promise<void>;
+    runA09?: () => Promise<void>;
 
     reset: () => Promise<void>;
 
