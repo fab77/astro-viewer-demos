@@ -164,7 +164,7 @@ The current scenario uses M51 with:
 - SDSS DR9 r — Optical
 - GALEX FUV — Ultraviolet
 - Herschel SPIRE 250 µm — Far infrared
-- XMM EPIC-RGB — X-ray
+- Chandra — X-ray
 
 The demo covers:
 
