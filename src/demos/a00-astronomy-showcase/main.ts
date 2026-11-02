@@ -558,6 +558,43 @@ async function fadeTo(key: SurveyKey, token: number): Promise<boolean> {
   showOnly(key);
   return true;
 }
+// Reuse A10's canvas PointerEvent technique for a reproducible camera demonstration.
+// The scene token keeps cancellation responsive and always releases the pointer.
+async function demonstrateCameraDrag(dx: number, dy: number, token: number): Promise<void> {
+  const rect = canvas.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  const pointerId = 1;
+  const dispatch = (type: string, clientX: number, clientY: number, buttons: number) => {
+    canvas.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerId, pointerType: "mouse",
+      isPrimary: true, button: type === "pointermove" ? -1 : 0,
+      buttons, clientX, clientY,
+    }));
+  };
+  let lastX = x;
+  let lastY = y;
+  dispatch("pointerdown", x, y, 1);
+  try {
+    const steps = 60;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      lastX = x + dx * t;
+      lastY = y + dy * t;
+      dispatch("pointermove", lastX, lastY, 1);
+      await wait(25, token);
+    }
+  } finally {
+    dispatch("pointerup", lastX, lastY, 0);
+  }
+  await wait(300, token);
+}
+function resetCameraConstraints(): void {
+  viewer.setEastWestRotationLocked(false);
+  viewer.setNorthSouthRotationLocked(false);
+  viewer.setKeepCameraNorthUp(false);
+  viewer.setRotationSensitivity(1);
+}
 function setEquatorialGridVisible(visible: boolean): void {
   if (viewer.isEquatorialGridVisible() !== visible)
     viewer.toggleEquatorialGrid();
@@ -569,6 +606,7 @@ async function reset(): Promise<void> {
   clearCatalogue();
   clearObservations();
   hideInteraction();
+  resetCameraConstraints();
   viewer.resetAxesOrientation();
   viewer.goTo(83.633083, 22.0145);
   viewer.setFoV(65);
@@ -601,6 +639,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     clearCatalogue();
     clearObservations();
     hideInteraction();
+    resetCameraConstraints();
     viewer.resetAxesOrientation();
     // Direct scene entry: establish the same baseline without replaying earlier scenes.
     const atM51 = startScene >= 3;
@@ -687,7 +726,44 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
         "await viewer.flyToFoV(60, 3500)",
       );
       await viewer.flyToFoV(60, 3500);
-      await wait(4000, token);
+      await wait(1200, token);
+      // A10 camera controls, demonstrated against the visible equatorial grid.
+      // Free movement on both axes, followed by axis-constrained rotations.
+      try {
+        caption(
+          "04 / Camera controls",
+          "Free camera rotation",
+          "Drag diagonally to rotate the celestial sphere on both axes.",
+          "viewer.setEastWestRotationLocked(false); viewer.setNorthSouthRotationLocked(false)",
+        );
+        await demonstrateCameraDrag(170, 100, token);
+        await demonstrateCameraDrag(-170, -100, token);
+        viewer.setEastWestRotationLocked(true);
+        caption(
+          "04 / Camera controls",
+          "East–West rotation locked",
+          "Drag vertically while East–West rotation is constrained.",
+          "viewer.setEastWestRotationLocked(true)",
+        );
+        await demonstrateCameraDrag(0, 140, token);
+        await demonstrateCameraDrag(0, -140, token);
+        viewer.setEastWestRotationLocked(false);
+        viewer.setNorthSouthRotationLocked(true);
+        caption(
+          "04 / Camera controls",
+          "North–South rotation locked",
+          "Drag horizontally while North–South rotation is constrained.",
+          "viewer.setNorthSouthRotationLocked(true)",
+        );
+        await demonstrateCameraDrag(170, 0, token);
+        await demonstrateCameraDrag(-170, 0, token);
+      } finally {
+        resetCameraConstraints();
+        viewer.resetAxesOrientation();
+        viewer.goTo(202.469575, 47.195258);
+        viewer.setFoV(60);
+      }
+      await wait(800, token);
       caption(
         "04 / Coordinates",
         "Hide coordinate grid",
