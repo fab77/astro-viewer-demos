@@ -57,7 +57,7 @@ type InteractionState = "normal" | "hover" | "selected";
 const M51_RA = 202.469575;
 const M51_DEC = 47.195258;
 
-const INTERACTION_BASE_COLOR = "#ff9f1c";
+const INTERACTION_BASE_COLOR = "#00D4FF";
 
 function requiredElement<T extends Element>(
   selector: string,
@@ -233,8 +233,63 @@ function showDemoCursorAtCenter(): void {
   demoCursor.hidden = false;
 }
 
+function dispatchDemoMouseMove(x: number, y: number): void {
+  const rect = canvas.getBoundingClientRect();
+  const event = new MouseEvent("mousemove", {
+    bubbles: true,
+    clientX: rect.left + x,
+    clientY: rect.top + y,
+  });
+  canvas.dispatchEvent(event);
+  // AstroViewer's interaction layer may listen to pointer events instead.
+  canvas.dispatchEvent(new PointerEvent("pointermove", {
+    bubbles: true,
+    pointerId: 1,
+    pointerType: "mouse",
+    clientX: rect.left + x,
+    clientY: rect.top + y,
+  }));
+}
+
+async function moveDemoCursorIntoFootprint(): Promise<void> {
+  const rect = canvas.getBoundingClientRect();
+  const startX = rect.width * 0.12;
+  const startY = rect.height * 0.12;
+  const endX = rect.width / 2;
+  const endY = rect.height / 2;
+  demoCursor.style.transition = "none";
+  demoCursor.style.left = `${startX}px`;
+  demoCursor.style.top = `${startY}px`;
+  demoCursor.hidden = false;
+  dispatchDemoMouseMove(startX, startY);
+  await demoWait(200);
+  const steps = 35;
+  for (let i = 1; i <= steps; i += 1) {
+    await waitWhilePaused();
+    const t = i / steps;
+    const x = startX + (endX - startX) * t;
+    const y = startY + (endY - startY) * t;
+    demoCursor.style.left = `${x}px`;
+    demoCursor.style.top = `${y}px`;
+    dispatchDemoMouseMove(x, y);
+    await demoWait(25);
+  }
+}
+
 function hideDemoCursor(): void {
   demoCursor.hidden = true;
+}
+
+function setLegendKind(kind: "catalogue" | "footprint"): void {
+  interactionStateElement.dataset.kind = kind;
+  const hex = INTERACTION_BASE_COLOR.slice(1);
+  const base = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const luminance = 0.2126 * base[0] + 0.7152 * base[1] + 0.0722 * base[2];
+  const target = luminance < 0.55 ? 1 : 0;
+  const mix = (amount: number) => `rgb(${base.map((v) => Math.round((v + (target - v) * amount) * 255)).join(", ")})`;
+  interactionStateElement.style.setProperty("--base-color", INTERACTION_BASE_COLOR);
+  interactionStateElement.style.setProperty("--hover-color", mix(0.45));
+  interactionStateElement.style.setProperty("--selected-color", mix(0.75));
 }
 
 function setInteractionState(state: InteractionState): void {
@@ -380,41 +435,26 @@ function angularDistanceSquared(
   return dra * dra + ddec * ddec;
 }
 
-function findNearbySources(cat: CatalogueGL): [Source, Source] {
-  if (cat.sources.length < 2) {
-    throw new Error("Not enough catalogue sources.");
+function findSeparatedSources(cat: CatalogueGL, count: number): Source[] {
+  if (cat.sources.length < count) {
+    throw new Error(`At least ${count} catalogue sources are required.`);
   }
-
-  let bestA = cat.sources[0];
-
-  let bestB = cat.sources[1];
-
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  for (let i = 0; i < cat.sources.length; i += 1) {
-    const sourceA = cat.sources[i];
-
-    for (let j = i + 1; j < cat.sources.length; j += 1) {
-      const sourceB = cat.sources[j];
-
-      const distance = angularDistanceSquared(
-        sourceA.point.raDeg,
-        sourceA.point.decDeg,
-        sourceB.point.raDeg,
-        sourceB.point.decDeg,
-      );
-
-      if (distance < bestDistance) {
-        bestDistance = distance;
-
-        bestA = sourceA;
-
-        bestB = sourceB;
-      }
-    }
+  const ordered = [...cat.sources].sort((a, b) =>
+    angularDistanceSquared(a.point.raDeg, a.point.decDeg, M51_RA, M51_DEC) -
+    angularDistanceSquared(b.point.raDeg, b.point.decDeg, M51_RA, M51_DEC),
+  );
+  const chosen = [ordered[0]];
+  while (chosen.length < count) {
+    const remaining = ordered.filter((source) => !chosen.includes(source));
+    const next = remaining.reduce((best, candidate) => {
+      const separation = (source: Source) => Math.min(...chosen.map((picked) =>
+        angularDistanceSquared(source.point.raDeg, source.point.decDeg,
+          picked.point.raDeg, picked.point.decDeg)));
+      return separation(candidate) > separation(best) ? candidate : best;
+    });
+    chosen.push(next);
   }
-
-  return [bestA, bestB];
+  return chosen;
 }
 
 function footprintValue(
@@ -453,46 +493,45 @@ function footprintNumber(footprint: Footprint, key: string): number {
   return value;
 }
 
+function findSeparatedFootprints(set: FootprintSetGL, count: number): Footprint[] {
+  const valid = set.footprintPolygons.filter((footprint) => footprint.valid);
+  if (valid.length < count) {
+    throw new Error(`At least ${count} valid footprints are required.`);
+  }
+  // Preserve the original first target (closest pair), then spread the rest.
+  const [first] = findNearbyFootprints(set);
+  const chosen = [first];
+  while (chosen.length < count) {
+    const remaining = valid.filter((footprint) => !chosen.includes(footprint));
+    const separation = (footprint: Footprint) => Math.min(...chosen.map((picked) =>
+      angularDistanceSquared(
+        footprintNumber(footprint, "ra_deg"), footprintNumber(footprint, "dec_deg"),
+        footprintNumber(picked, "ra_deg"), footprintNumber(picked, "dec_deg"),
+      )));
+    chosen.push(remaining.reduce((best, candidate) =>
+      separation(candidate) > separation(best) ? candidate : best));
+  }
+  return chosen;
+}
+
 function findNearbyFootprints(set: FootprintSetGL): [Footprint, Footprint] {
   const valid = set.footprintPolygons.filter((footprint) => footprint.valid);
-
-  if (valid.length < 2) {
-    throw new Error("Not enough valid footprints.");
-  }
-
-  let bestA = valid[0];
-
-  let bestB = valid[1];
-
-  let bestDistance = Number.POSITIVE_INFINITY;
-
+  let best: [Footprint, Footprint] | null = null;
+  let bestDistance = Infinity;
   for (let i = 0; i < valid.length; i += 1) {
-    const footprint1 = valid[i];
-
-    const ra1 = footprintNumber(footprint1, "ra_deg");
-
-    const dec1 = footprintNumber(footprint1, "dec_deg");
-
     for (let j = i + 1; j < valid.length; j += 1) {
-      const footprint2 = valid[j];
-
-      const ra2 = footprintNumber(footprint2, "ra_deg");
-
-      const dec2 = footprintNumber(footprint2, "dec_deg");
-
-      const distance = angularDistanceSquared(ra1, dec1, ra2, dec2);
-
+      const distance = angularDistanceSquared(
+        footprintNumber(valid[i], "ra_deg"), footprintNumber(valid[i], "dec_deg"),
+        footprintNumber(valid[j], "ra_deg"), footprintNumber(valid[j], "dec_deg"),
+      );
       if (distance < bestDistance) {
         bestDistance = distance;
-
-        bestA = footprint1;
-
-        bestB = footprint2;
+        best = [valid[i], valid[j]];
       }
     }
   }
-
-  return [bestA, bestB];
+  if (!best) throw new Error("Not enough valid footprints.");
+  return best;
 }
 
 function clearCatalogue(): void {
@@ -623,91 +662,47 @@ async function runA06(): Promise<void> {
       1700,
     );
 
+    setLegendKind("catalogue");
     catalogue = createCatalogue();
 
-    [catalogueSourceA, catalogueSourceB] = findNearbySources(catalogue);
-
+    const catalogueTargets = findSeparatedSources(catalogue, 5);
+    [catalogueSourceA, catalogueSourceB] = catalogueTargets;
     setInteractionState("normal");
+    await demoWait(1800);
 
-    await demoWait(2600);
-
-    await showLabel(
-      "Catalogue — hover",
-      "Hover emphasis is derived automatically from the catalogue base colour.",
-      "catalogue.extHighlightSource(sourceA, true)",
-      1700,
-    );
-
-    viewer.flyTo(
-      catalogueSourceA.point.raDeg,
-      catalogueSourceA.point.decDeg,
-      1800,
-    );
-
-    await demoWait(1900);
-
-    await viewer.flyToFoV(0.06, 1400);
-
-    await demoWait(500);
-
-    showDemoCursorAtCenter();
-
-    catalogue.extHighlightSource(catalogueSourceA, true);
-
-    setInteractionState("hover");
-
-    await demoWait(3000);
-
-    await showLabel(
-      "Catalogue — selected",
-      "Selection remains persistent and receives stronger geometric emphasis.",
-      "catalogue.extAddSources2Selected(sourceA)",
-      1700,
-    );
-
-    catalogue.extAddSources2Selected(catalogueSourceA);
-
-    catalogue.extHighlightSource(catalogueSourceA, false);
-
-    setInteractionState("selected");
-
-    await demoWait(3000);
-
-    await showLabel(
-      "Selected + hovered",
-      "A selected source remains persistent while another source receives hover feedback.",
-      `catalogue.extHighlightSource(
-  sourceB,
-  true
-)`,
-      1800,
-    );
-
-    viewer.flyTo(
-      catalogueSourceB.point.raDeg,
-      catalogueSourceB.point.decDeg,
-      1800,
-    );
-
-    await demoWait(1900);
-
-    showDemoCursorAtCenter();
-
-    catalogue.extHighlightSource(catalogueSourceB, true);
-
-    setInteractionState("hover");
-
-    await demoWait(3200);
-
-    catalogue.extHighlightSource(catalogueSourceB, false);
-
-    catalogue.clearSelection();
-
+    await viewer.flyToFoV(0.2, 1100);
+    for (let i = 0; i < catalogueTargets.length; i += 1) {
+      const source = catalogueTargets[i];
+      const willSelect = i < 3;
+      await showLabel(
+        willSelect ? `Catalogue — select ${i + 1} of 3` : `Catalogue — hover ${i - 2} of 2`,
+        willSelect ? "Selection accumulates without clearing earlier sources." :
+          "Hover is temporary; the three selected sources remain selected.",
+        willSelect ? "catalogue.extAddSources2Selected(source)" :
+          "catalogue.extHighlightSource(source, true)",
+        850,
+      );
+      viewer.flyTo(source.point.raDeg, source.point.decDeg, 1250);
+      await demoWait(1350);
+      showDemoCursorAtCenter();
+      catalogue.extHighlightSource(source, true);
+      setInteractionState("hover");
+      await demoWait(1000);
+      if (willSelect) {
+        catalogue.extAddSources2Selected(source);
+        setInteractionState("selected");
+        await demoWait(950);
+      }
+      catalogue.extHighlightSource(source, false);
+    }
     hideDemoCursor();
-
+    viewer.flyTo(M51_RA, M51_DEC, 1400);
+    await demoWait(1500);
+    setInteractionState("selected");
+    await demoWait(2200);
+    catalogue.clearSelection();
     setInteractionState("normal");
-
-    await demoWait(1200);
+    await demoWait(700);
 
     /*
      * Transition from catalogue to footprints
@@ -731,6 +726,7 @@ async function runA06(): Promise<void> {
       1800,
     );
 
+    setLegendKind("footprint");
     footprintSet = createFootprints();
 
     [footprintA, footprintB] = findNearbyFootprints(footprintSet);
@@ -762,10 +758,9 @@ async function runA06(): Promise<void> {
 
     await demoWait(500);
 
-    showDemoCursorAtCenter();
+    await moveDemoCursorIntoFootprint();
 
-    footprintSet.extHighlightFootprint(footprintA, true);
-
+    // Hover is driven by canvas picking during the simulated mouse movement.
     setInteractionState("hover");
 
     await demoWait(3000);
@@ -783,42 +778,67 @@ async function runA06(): Promise<void> {
 
     footprintSet.extAddPolygons2Selected(footprintA);
 
-    footprintSet.extHighlightFootprint(footprintA, false);
+    dispatchDemoMouseMove(-20, -20);
 
     setInteractionState("selected");
 
     await demoWait(3000);
 
-    /*
-     * Selected A + hover B
-     */
-
-    const footprintBRa = footprintNumber(footprintB, "ra_deg");
-
-    const footprintBDec = footprintNumber(footprintB, "dec_deg");
+    /* Select a second footprint, then show the complete M51 field. */
+    const footprintTargets = findSeparatedFootprints(footprintSet, 5);
+    const additional = footprintTargets.filter((footprint) => footprint !== footprintA);
+    const second = additional[0];
+    await showLabel(
+      "Footprints — second selection",
+      "Hover and select another observation while preserving the first.",
+      "footprints.extAddPolygons2Selected(footprintB)", 1100,
+    );
+    viewer.flyTo(footprintNumber(second, "ra_deg"), footprintNumber(second, "dec_deg"), 1700);
+    await demoWait(1850);
+    await moveDemoCursorIntoFootprint();
+    setInteractionState("hover");
+    await demoWait(1050);
+    footprintSet.extAddPolygons2Selected(second);
+    dispatchDemoMouseMove(-20, -20);
+    setInteractionState("selected");
+    await demoWait(1250);
+    hideDemoCursor();
 
     await showLabel(
-      "Selected + hovered",
-      "One footprint remains selected while another receives hover feedback.",
-      "footprints.extHighlightFootprint(footprintB, true)",
-      1800,
+      "Footprints — overview of M51",
+      "Zoom out and recenter to see the galaxy and the observation footprints together.",
+      "viewer.flyTo(M51_RA, M51_DEC, 1800)", 1300,
     );
+    viewer.flyTo(M51_RA, M51_DEC, 1800);
+    await demoWait(1900);
+    await viewer.flyToFoV(0.25, 1700);
+    await demoWait(1100);
 
-    viewer.flyTo(footprintBRa, footprintBDec, 1900);
-
-    await demoWait(2000);
-
-    showDemoCursorAtCenter();
-
-    footprintSet.extHighlightFootprint(footprintB, true);
-
-    setInteractionState("hover");
-
-    await demoWait(3200);
-
-    footprintSet.extHighlightFootprint(footprintB, false);
-
-    hideDemoCursor();
+    // At the overview scale, pan to each target while keeping the same FoV.
+    // The simulated pointer movement invokes AstroViewer's actual picking path.
+    for (let i = 1; i < additional.length; i += 1) {
+      const footprint = additional[i];
+      await showLabel(
+        `Footprints — selection ${i + 2} of 5`,
+        "Hover, then add the footprint to the persistent multi-selection.",
+        "footprints.extAddPolygons2Selected(footprint)", 950,
+      );
+      viewer.flyTo(footprintNumber(footprint, "ra_deg"),
+        footprintNumber(footprint, "dec_deg"), 1300);
+      await demoWait(1450);
+      await moveDemoCursorIntoFootprint();
+      setInteractionState("hover");
+      await demoWait(900);
+      footprintSet.extAddPolygons2Selected(footprint);
+      dispatchDemoMouseMove(-20, -20);
+      setInteractionState("selected");
+      await demoWait(1000);
+      hideDemoCursor();
+    }
+    viewer.flyTo(M51_RA, M51_DEC, 1800);
+    await demoWait(1900);
+    setInteractionState("selected");
+    await demoWait(2600);
 
     /*
      * End state

@@ -213,17 +213,57 @@
         }
 
         .swatch {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
+            flex: 0 0 16px;
             border-radius: 50%;
+            box-sizing: border-box;
+            background: transparent;
+            border: 3px solid var(--base-color, #00D4FF);
         }
 
-        .swatch.normal {
-            background: #ff9f1c;
+        /* Catalogue glyphs: cyan outline, red hover/selection fill,
+           and a white central dot for selected sources. */
+        #interaction-state[data-kind="catalogue"] .swatch.hover,
+        #interaction-state[data-kind="catalogue"] .swatch.selected {
+            border-color: var(--base-color, #00D4FF);
+            background: #ff3b30;
+            position: relative;
+        }
+        #interaction-state[data-kind="catalogue"] .swatch.selected::after {
+            content: "";
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: #fff;
         }
 
-        .swatch.interaction {
-            background: #8c570f;
+        /* Footprint legend: polygon outline and translucent selected fill. */
+        #interaction-state[data-kind="footprint"] .swatch {
+            border-radius: 3px;
+        }
+        #interaction-state[data-kind="footprint"] .swatch.hover {
+            border-color: var(--hover-color);
+        }
+        #interaction-state[data-kind="footprint"] .swatch.selected {
+            border-color: var(--selected-color);
+            background: color-mix(in srgb, var(--base-color) 20%, transparent);
+        }
+
+        #interaction-state .interaction-detail {
+            display: block;
+            font-size: 11px;
+            opacity: .8;
+            margin-left: auto;
+            text-align: right;
+        }
+        #interaction-state[data-kind="catalogue"] .footprint-detail,
+        #interaction-state[data-kind="footprint"] .catalogue-detail {
+            display: none;
         }
 
         #demo-title {
@@ -322,13 +362,13 @@
                 </div>
 
                 <div id="state-hover" class="interaction-row">
-                    <span class="swatch interaction"></span>
-                    Hover
+                    <span class="swatch hover"></span>
+                    Hover <small class="interaction-detail catalogue-detail">Derived contrast</small><small class="interaction-detail footprint-detail">Outline · 45% mix</small>
                 </div>
 
                 <div id="state-selected" class="interaction-row">
-                    <span class="swatch interaction"></span>
-                    Selected emphasis
+                    <span class="swatch selected"></span>
+                    Selected <small class="interaction-detail catalogue-detail">Contrast + centre</small><small class="interaction-detail footprint-detail">Outline · 75% + fill</small>
                 </div>
             </div>
 
