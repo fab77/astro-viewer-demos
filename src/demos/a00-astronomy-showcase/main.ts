@@ -13,7 +13,14 @@ import {
 import hscUrl from "./hsc_m51_sources.json?url";
 import hstUrl from "./hst_m51_observations.json?url";
 
-type SurveyKey = "optical" | "ultraviolet" | "infrared" | "xray";
+type SurveyKey =
+  | "optical"
+  | "ultraviolet"
+  | "infrared"
+  | "xray"
+  | "nearinfrared"
+  | "midinfrared"
+  | "herschelfits";
 const surveys: Record<SurveyKey, { name: string; url: string }> = {
   optical: {
     name: "DSS Color — Optical",
@@ -30,6 +37,18 @@ const surveys: Record<SurveyKey, { name: string; url: string }> = {
   xray: {
     name: "Chandra — X-ray",
     url: "https://cdaftp.cfa.harvard.edu/cxc-hips/",
+  },
+  nearinfrared: {
+    name: "2MASS Color — Near infrared (J/H/K)",
+    url: "https://skies.esac.esa.int/2MASSColor/",
+  },
+  midinfrared: {
+    name: "AllWISE Color — Mid infrared (W1/W2/W4)",
+    url: "https://skies.esac.esa.int/AllWISEColor/",
+  },
+  herschelfits: {
+    name: "Herschel SPIRE 250 µm — FITS",
+    url: "https://skies.esac.esa.int/Herschel/SPIRE250/",
   },
 };
 const get = <T extends HTMLElement>(id: string): T => {
@@ -563,17 +582,34 @@ async function fadeTo(key: SurveyKey, token: number): Promise<boolean> {
 }
 // Reuse A10's canvas PointerEvent technique for a reproducible camera demonstration.
 // The scene token keeps cancellation responsive and always releases the pointer.
-async function demonstrateCameraDrag(dx: number, dy: number, token: number): Promise<void> {
+async function demonstrateCameraDrag(
+  dx: number,
+  dy: number,
+  token: number,
+): Promise<void> {
   const rect = canvas.getBoundingClientRect();
   const x = rect.left + rect.width / 2;
   const y = rect.top + rect.height / 2;
   const pointerId = 1;
-  const dispatch = (type: string, clientX: number, clientY: number, buttons: number) => {
-    canvas.dispatchEvent(new PointerEvent(type, {
-      bubbles: true, cancelable: true, pointerId, pointerType: "mouse",
-      isPrimary: true, button: type === "pointermove" ? -1 : 0,
-      buttons, clientX, clientY,
-    }));
+  const dispatch = (
+    type: string,
+    clientX: number,
+    clientY: number,
+    buttons: number,
+  ) => {
+    canvas.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId,
+        pointerType: "mouse",
+        isPrimary: true,
+        button: type === "pointermove" ? -1 : 0,
+        buttons,
+        clientX,
+        clientY,
+      }),
+    );
   };
   let lastX = x;
   let lastY = y;
@@ -627,10 +663,10 @@ async function reset(): Promise<void> {
   status.textContent = "Ready";
   controls();
 }
-type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 const initialScene = Number(new URLSearchParams(location.search).get("scene"));
 const requestedScene: SceneNumber =
-  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 8
+  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 10
     ? (initialScene as SceneNumber)
     : 1;
 
@@ -650,14 +686,22 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     resetCameraConstraints();
     viewer.resetAxesOrientation();
     // Direct scene entry: establish the same baseline without replaying earlier scenes.
-    const atM51 = startScene >= 3;
+    const atM51 = startScene >= 3 && startScene !== 4;
     viewer.goTo(atM51 ? 202.469575 : 83.633083, atM51 ? 47.195258 : 22.0145);
     viewer.setFoV(
-      startScene === 1 || startScene === 2 ? 65 : startScene <= 4 ? 0.5 : startScene === 5 ? 60 : 5,
+      startScene === 1 || startScene === 2
+        ? 65
+        : startScene <= 3
+          ? 0.5
+          : startScene === 4
+            ? 2.5
+            : startScene === 6
+              ? 60
+              : 5,
     );
     showOnly("optical");
-    if (startScene === 4) setEquatorialGridVisible(true);
-    if (startScene === 5) setHealpixGridVisible(true);
+    if (startScene === 5) setEquatorialGridVisible(true);
+    if (startScene === 6) setHealpixGridVisible(true);
     if (startScene > 1) title.classList.remove("visible");
     if (startScene <= 1) {
       title.classList.add("visible");
@@ -720,8 +764,83 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(1200, token);
     }
     if (startScene <= 4) {
+      // Three real, full-sky wavelength surveys at M42, simultaneously visible.
+      // 2MASS and AllWISE use IRSA mirrors to avoid reliance on CDS tile hosts.
+      const m42Ra = 83.8221;
+      const m42Dec = -5.3911;
+      setEquatorialGridVisible(false);
+      setHealpixGridVisible(false);
+      viewer.goTo(m42Ra, m42Dec);
+      viewer.setFoV(2.5);
+      showOnly("optical");
       caption(
-        "04 / Coordinates",
+        "04 / Three-layer compositing",
+        "M42 — optical sky",
+        "Start with DSS Color at full opacity over the Orion Nebula.",
+        "viewer.setHiPSOpacity(optical, 1)",
+      );
+      await wait(1900, token);
+      // Load both IR surveys before exposing them. Do not claim a layer is
+      // visible if its HiPS metadata could not be loaded.
+      const nir = await ensureLayer("nearinfrared");
+      check(token);
+      const mir = await ensureLayer("midinfrared");
+      check(token);
+      const optical = layers.get("optical")!;
+      viewer.setActiveHiPS(mir);
+      viewer.setHiPSOpacity(nir, 0);
+      viewer.setHiPSOpacity(mir, 0);
+      caption(
+        "04 / Three-layer compositing",
+        "Add 2MASS — near infrared",
+        "Overlay J/H/K near-infrared observations without removing the optical sky.",
+        "viewer.setHiPSOpacity(nearInfrared, 0.45)",
+      );
+      for (let i = 0; i <= 15; i++) {
+        await wait(75, token);
+        viewer.setHiPSOpacity(nir, (0.45 * i) / 15);
+      }
+      await wait(1500, token);
+      caption(
+        "04 / Three-layer compositing",
+        "Add AllWISE — mid infrared",
+        "Three wavelength regimes are now rendered together with independent opacity.",
+        "viewer.setHiPSOpacity(midInfrared, 0.35)",
+      );
+      for (let i = 0; i <= 15; i++) {
+        await wait(75, token);
+        viewer.setHiPSOpacity(mir, (0.35 * i) / 15);
+      }
+      await wait(2200, token);
+      caption(
+        "04 / Three-layer compositing",
+        "Rebalance the three layers",
+        "Optical 35%, 2MASS 65%, AllWISE 55% — all visible simultaneously.",
+        "viewer.setHiPSOpacity(optical, 0.35); viewer.setHiPSOpacity(nearInfrared, 0.65); viewer.setHiPSOpacity(midInfrared, 0.55)",
+      );
+      for (let i = 0; i <= 20; i++) {
+        await wait(75, token);
+        const t = i / 20;
+        viewer.setHiPSOpacity(optical, 1 - 0.65 * t);
+        viewer.setHiPSOpacity(nir, 0.45 + 0.2 * t);
+        viewer.setHiPSOpacity(mir, 0.35 + 0.2 * t);
+      }
+      await wait(2300, token);
+      caption(
+        "04 / Three-layer compositing",
+        "Return to optical",
+        "Hide both infrared overlays and restore the DSS Color view.",
+        "viewer.setHiPSOpacity(nearInfrared, 0); viewer.setHiPSOpacity(midInfrared, 0)",
+      );
+      showOnly("optical");
+      await wait(1000, token);
+      // Re-establish the next scene's M51 baseline (also for direct scene 05).
+      viewer.goTo(202.469575, 47.195258);
+      viewer.setFoV(0.5);
+    }
+    if (startScene <= 5) {
+      caption(
+        "05 / Coordinates",
         "Equatorial grid — RA / Dec",
         "Reveal the celestial coordinate system around M51.",
         "viewer.toggleEquatorialGrid()",
@@ -729,7 +848,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       setEquatorialGridVisible(true);
       await wait(1200, token);
       caption(
-        "04 / Coordinates",
+        "05 / Coordinates",
         "Explore the equatorial grid",
         "Zoom out to 60° to reveal meridians and declination parallels.",
         "await viewer.flyToFoV(60, 3500)",
@@ -740,7 +859,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       // Free movement on both axes, followed by axis-constrained rotations.
       try {
         caption(
-          "04 / Camera controls",
+          "05 / Camera controls",
           "Free camera rotation",
           "Drag diagonally to rotate the celestial sphere on both axes.",
           "viewer.setEastWestRotationLocked(false); viewer.setNorthSouthRotationLocked(false)",
@@ -749,7 +868,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
         await demonstrateCameraDrag(-170, -100, token);
         viewer.setEastWestRotationLocked(true);
         caption(
-          "04 / Camera controls",
+          "05 / Camera controls",
           "East–West rotation locked",
           "Drag vertically while East–West rotation is constrained.",
           "viewer.setEastWestRotationLocked(true)",
@@ -759,7 +878,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
         viewer.setEastWestRotationLocked(false);
         viewer.setNorthSouthRotationLocked(true);
         caption(
-          "04 / Camera controls",
+          "05 / Camera controls",
           "North–South rotation locked",
           "Drag horizontally while North–South rotation is constrained.",
           "viewer.setNorthSouthRotationLocked(true)",
@@ -774,7 +893,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       }
       await wait(800, token);
       caption(
-        "04 / Coordinates",
+        "05 / Coordinates",
         "Hide coordinate grid",
         "Return to the unobstructed optical view.",
         "viewer.toggleEquatorialGrid()",
@@ -782,13 +901,13 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       setEquatorialGridVisible(false);
       await wait(1200, token);
     }
-    if (startScene <= 5) {
+    if (startScene <= 6) {
       // A03 HEALPix grid, independent from the equatorial grid and catalogues.
       setEquatorialGridVisible(false);
       viewer.goTo(202.469575, 47.195258);
       viewer.setFoV(60);
       caption(
-        "05 / HEALPix grid",
+        "06 / HEALPix grid",
         "HEALPix sky pixelisation",
         "Display the hierarchical HEALPix grid used to organise HiPS sky tiles.",
         "viewer.toggleHealpixGrid()",
@@ -796,7 +915,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       setHealpixGridVisible(true);
       await wait(2000, token);
       caption(
-        "05 / HEALPix grid",
+        "06 / HEALPix grid",
         "Zoom in",
         "Zoom towards M51 to reveal the changing HEALPix tessellation.",
         "await viewer.flyToFoV(5, 2600)",
@@ -804,7 +923,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await viewer.flyToFoV(5, 2600);
       await wait(1400, token);
       caption(
-        "05 / HEALPix grid",
+        "06 / HEALPix grid",
         "Zoom out",
         "Return to the wider sky while keeping the HEALPix grid visible.",
         "await viewer.flyToFoV(60, 2600)",
@@ -812,7 +931,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await viewer.flyToFoV(60, 2600);
       await wait(1500, token);
       caption(
-        "05 / HEALPix grid",
+        "06 / HEALPix grid",
         "Hide HEALPix grid",
         "Remove the grid before the scientific overlays.",
         "viewer.toggleHealpixGrid()",
@@ -820,9 +939,9 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       setHealpixGridVisible(false);
       await wait(900, token);
     }
-    if (startScene <= 6) {
+    if (startScene <= 7) {
       caption(
-        "06 / Catalogues",
+        "07 / Catalogues",
         "Hubble Source Catalog",
         "Return to M51 and display 40 HSC sources from the local A04 scientific fixture.",
         "viewer.createCatalogue(...); viewer.showCatalogue(catalogue)",
@@ -835,7 +954,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       // Demonstrate the catalogue colour API before source interactions.
       for (const color of ["#ffb347", "#a78bfa", INTERACTION_COLOR]) {
         caption(
-          "06 / Catalogues",
+          "07 / Catalogues",
           "Catalogue colour",
           "Change the HSC marker colour while preserving the scientific data.",
           "viewer.changeCatalogueColor(catalogue, color)",
@@ -848,7 +967,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       // Scientific styling from actual HSC columns: flux is a magnitude (mag),
       // and ci is the normalized concentration index. flux_sigma is constant here.
       caption(
-        "06 / Catalogues",
+        "07 / Catalogues",
         "Photometric magnitude",
         "Map the HSC flux (magnitude, mag) column to marker brightness.",
         "viewer.setCatalogueShapeHue(catalogue, 'flux')",
@@ -856,7 +975,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       viewer.setCatalogueShapeHue(hsc.catalogue, "flux");
       await wait(1900, token);
       caption(
-        "06 / Catalogues",
+        "07 / Catalogues",
         "Source concentration",
         "Map the HSC concentration index (ci) to marker size (8–20 px).",
         "viewer.setCatalogueShapeSize(catalogue, 'ci')",
@@ -881,7 +1000,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
         const source = hscTargets[i];
         const selecting = i < 2;
         caption(
-          "06 / Catalogues",
+          "07 / Catalogues",
           selecting ? `HSC selection ${i + 1}/2` : `HSC hover ${i - 1}/2`,
           selecting
             ? "Hover the source, then preserve its selection."
@@ -908,7 +1027,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(1800, token);
       hideInteraction();
       caption(
-        "06 / Catalogues",
+        "07 / Catalogues",
         "Hide catalogue",
         "Remove the HSC overlay before showing HST observation footprints.",
         "viewer.deleteCatalogue(catalogue)",
@@ -916,16 +1035,16 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       clearCatalogue();
       await wait(700, token);
     }
-    if (startScene <= 7) {
+    if (startScene <= 8) {
       caption(
-        "07 / Observations",
+        "08 / Observations",
         "Hubble observation coverage",
         "Display HST observation footprints around M51 using STC-S geometry.",
         "viewer.createFootprintSet(...); viewer.showFootprintSet(footprints)",
       );
       // Only initialise the camera when opening scene 07 directly.
       // During continuous playback, preserve the catalogue camera view.
-      if (startScene === 7) {
+      if (startScene === 8) {
         viewer.flyTo(202.469575, 47.195258, 2300);
         await wait(2500, token);
         await viewer.flyToFoV(0.5, 2100);
@@ -934,7 +1053,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       // Demonstrate footprint colours independently of catalogue styling.
       for (const color of ["#ffb347", "#a78bfa", INTERACTION_COLOR]) {
         caption(
-          "07 / Observations",
+          "08 / Observations",
           "Footprint colour",
           "Change the HST observation outline and update the interaction legend.",
           "viewer.changeFootprintSetColor(footprints, color)",
@@ -960,7 +1079,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       for (let i = 0; i < targets.length; i++) {
         const footprint = targets[i];
         caption(
-          "07 / Observations",
+          "08 / Observations",
           `HST footprint ${i + 1}/4`,
           "Move the pointer to hover; add the footprint to the persistent multi-selection.",
           "footprints.extAddPolygons2Selected(footprint)",
@@ -979,7 +1098,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(2300, token);
       hideInteraction();
       caption(
-        "07 / Observations",
+        "08 / Observations",
         "Restore optical sky",
         "Remove the observation overlay and finish the showcase.",
         "viewer.deleteFootprintSet(footprints)",
@@ -988,10 +1107,10 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await viewer.flyToFoV(5, 1800);
       await wait(700, token);
     }
-    if (startScene <= 8) {
+    if (startScene <= 9) {
       // 08 — Scientific View State (A07): capture, navigate, restore.
       caption(
-        "08 / View state",
+        "09 / View state",
         "Save the M51 view",
         "Frame M51 and capture the astronomical viewing state.",
         "viewer.getCurrentAstroViewerStatus()",
@@ -1008,7 +1127,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       }
       await showStateToast("STATE SAVED", token);
       caption(
-        "08 / View state",
+        "09 / View state",
         "Navigate to Orion",
         "Leave the saved view and change the field of view.",
         "viewer.flyTo(83.633083, 22.0145, 2300)",
@@ -1019,7 +1138,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(1200, token);
 
       caption(
-        "08 / View state",
+        "09 / View state",
         "Restore M51",
         "Restore the previously saved astronomical state.",
         "viewer.restoreAstroViewerState(savedView, false)",
@@ -1028,6 +1147,93 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(700, token);
       await showStateToast("STATE RESTORED", token);
       await wait(900, token);
+    }
+    if (startScene <= 10) {
+      // Herschel SPIRE 250 µm supports PNG and FITS tiles.
+      // Keep the camera fixed to make the FITS processing comparison meaningful.
+      const herschel = await ensureLayer("herschelfits");
+      check(token);
+      viewer.goTo(83.8221, -5.3911);
+      viewer.setFoV(2.5);
+      showOnly("herschelfits");
+      viewer.changeHiPSFormat("png");
+      caption(
+        "10 / FITS scientific visualization",
+        "Herschel SPIRE 250 µm — PNG",
+        "Start with the image tiles of the same far-infrared survey.",
+        'viewer.changeHiPSFormat("png")',
+      );
+      await wait(2400, token);
+      viewer.changeHiPSFormat("fits");
+      viewer.changeColorMap("grayscale");
+      viewer.setHiPSFITSScaleFunction("linear");
+      viewer.setHiPSFITSRangeMode("robust");
+      caption(
+        "10 / FITS — scientific pixel values",
+        "FITS — linear grayscale",
+        "Unlike pre-rendered PNG tiles, FITS contains numerical intensity measurements. Linear stretch maps equal intensity differences to equal display steps; robust limits reduce the impact of extremes.",
+        'viewer.changeHiPSFormat("fits"); viewer.setHiPSFITSScaleFunction("linear")',
+      );
+      await wait(3800, token);
+      // Color maps change the display palette, not the FITS measurements.
+      const colorMaps = [
+        { name: "planck", description: "A false-color palette emphasizes contrasts in far-infrared emission. The FITS pixel values remain unchanged." },
+        { name: "cubehelix", description: "A different intensity-to-color mapping reveals the same structures with another visual progression; no scientific values are altered." },
+        { name: "hot", description: "Dark-to-bright warm colors highlight strong emission. This is visualization, not a temperature measurement." },
+      ] as const;
+      for (const map of colorMaps) {
+        viewer.changeColorMap(map.name);
+        caption(
+          "10 / FITS — color mapping",
+          `Color map — ${map.name}`,
+          map.description,
+          `viewer.changeColorMap("${map.name}")`,
+        );
+        await wait(3500, token);
+      }
+      // Stretch changes the intensity transformation; keep the palette fixed.
+      viewer.changeColorMap("planck");
+      const stretches = [
+        { name: "sqrt", description: "Square-root stretch expands the lower end of the intensity scale, making faint emission easier to distinguish." },
+        { name: "log", description: "Logarithmic stretch compresses a wide dynamic range so faint and bright structures can be seen together." },
+        { name: "asinh", description: "Inverse-hyperbolic-sine stretch is nearly linear near zero and compresses brighter values, balancing faint detail and bright regions." },
+        { name: "linear", description: "Return to linear scaling: equal changes in measured intensity produce equal steps along the color map." },
+      ] as const;
+      for (const stretch of stretches) {
+        viewer.setHiPSFITSScaleFunction(stretch.name);
+        caption(
+          "10 / FITS — intensity stretch",
+          `Intensity stretch — ${stretch.name}`,
+          stretch.description,
+          `viewer.setHiPSFITSScaleFunction("${stretch.name}")`,
+        );
+        await wait(3700, token);
+      }
+      // Per-tile ranges can create visible discontinuities at tile boundaries.
+      const ranges = [
+        { name: "hips", description: "Use the survey's shared HiPS intensity limits to preserve a consistent display scale across neighboring tiles." },
+        { name: "robust", description: "Use robust contrast limits to reduce the influence of extreme intensities and reveal more of the diffuse emission." },
+      ] as const;
+      for (const range of ranges) {
+        viewer.setHiPSFITSRangeMode(range.name);
+        caption(
+          "10 / FITS — intensity range",
+          range.name === "hips" ? "Range — HiPS global limits" : "Range — robust contrast",
+          range.description,
+          `viewer.setHiPSFITSRangeMode("${range.name}")`,
+        );
+        await wait(4200, token);
+      }
+      viewer.changeHiPSFormat("png");
+      showOnly("optical");
+      viewer.changeColorMap("native");
+      caption(
+        "10 / FITS scientific visualization",
+        "Return to DSS Color",
+        "Restore the optical survey after the FITS demonstration.",
+        "viewer.setActiveHiPS(optical)",
+      );
+      await wait(1200, token);
     }
     status.textContent = "A00 complete";
   } catch (error) {
@@ -1076,7 +1282,7 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   const number = Number(event.key);
-  if (Number.isInteger(number) && number >= 1 && number <= 8 && !running) {
+  if (Number.isInteger(number) && number >= 1 && number <= 9 && !running) {
     void runA00(number as SceneNumber);
   }
 });
