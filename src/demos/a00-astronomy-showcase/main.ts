@@ -89,9 +89,13 @@ async function fadeTo(key: SurveyKey, token: number): Promise<boolean> {
   showOnly(key);
   return true;
 }
+function setEquatorialGridVisible(visible: boolean): void {
+  if (viewer.isEquatorialGridVisible() !== visible) viewer.toggleEquatorialGrid();
+}
 async function reset(): Promise<void> {
   if (running) return;
   paused = false;
+  setEquatorialGridVisible(false);
   viewer.resetAxesOrientation();
   viewer.goTo(83.633083, 22.0145);
   viewer.setFoV(65);
@@ -108,6 +112,7 @@ async function runA00(): Promise<void> {
   controls();
   status.textContent = "Running A00";
   try {
+    setEquatorialGridVisible(false);
     viewer.resetAxesOrientation();
     viewer.goTo(83.633083, 22.0145);
     viewer.setFoV(65);
@@ -136,10 +141,20 @@ async function runA00(): Promise<void> {
     caption("03 / Multiwavelength", "Return to optical", "Complete the comparison in DSS Color.", "viewer.setActiveHiPS(dssColor)");
     await fadeTo("optical", token);
     await wait(1200, token);
+    caption("04 / Coordinates", "Equatorial grid — RA / Dec", "Reveal the celestial coordinate system around M51.", "viewer.toggleEquatorialGrid()");
+    setEquatorialGridVisible(true);
+    await wait(1200, token);
+    caption("04 / Coordinates", "Explore the equatorial grid", "Zoom out to 60° to reveal meridians and declination parallels.", "await viewer.flyToFoV(60, 3500)");
+    await viewer.flyToFoV(60, 3500);
+    await wait(4000, token);
+    caption("04 / Coordinates", "Hide coordinate grid", "Return to the unobstructed optical view.", "viewer.toggleEquatorialGrid()");
+    setEquatorialGridVisible(false);
+    await wait(1200, token);
     status.textContent = "A00 complete";
   } catch (error) {
     if (token === generation) {
       console.error("A00 sequence failed", error);
+      setEquatorialGridVisible(false);
       status.textContent = "A00 failed";
     }
   } finally {
