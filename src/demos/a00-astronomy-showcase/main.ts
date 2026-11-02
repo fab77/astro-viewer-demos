@@ -261,6 +261,26 @@ async function wait(ms: number, token: number): Promise<void> {
   }
   check(token);
 }
+// Transient centre-screen feedback for the scientific view-state demonstration.
+const stateToast = document.createElement("div");
+stateToast.setAttribute("role", "status");
+stateToast.setAttribute("aria-live", "polite");
+Object.assign(stateToast.style, {
+  position: "fixed", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+  zIndex: "10000", padding: "18px 32px", borderRadius: "12px",
+  background: "rgba(10, 18, 30, 0.88)", color: "#fff",
+  font: "600 22px system-ui, sans-serif", letterSpacing: "0.12em",
+  boxShadow: "0 12px 36px rgba(0, 0, 0, 0.35)",
+  pointerEvents: "none", opacity: "0", transition: "opacity 250ms ease",
+});
+document.body.appendChild(stateToast);
+async function showStateToast(message: string, token: number): Promise<void> {
+  stateToast.textContent = message;
+  stateToast.style.opacity = "1";
+  try { await wait(1500, token); }
+  finally { stateToast.style.opacity = "0"; }
+}
+
 function caption(scene: string, headline: string, detail: string, api: string): void {
   get<HTMLElement>("scene").textContent = scene;
   get<HTMLElement>("headline").textContent = headline;
@@ -456,6 +476,27 @@ async function runA00(): Promise<void> {
     clearObservations();
     await viewer.flyToFoV(5, 1800);
     await wait(700, token);
+
+    // 07 — Scientific View State (A07): capture, navigate, restore.
+    caption("07 / View state", "Save the M51 view", "Frame M51 and capture the astronomical viewing state.", "viewer.getCurrentAstroViewerStatus()");
+    viewer.flyTo(202.469575, 47.195258, 1800);
+    await wait(2000, token);
+    await viewer.flyToFoV(0.5, 1500);
+    check(token);
+    const savedView = viewer.getCurrentAstroViewerStatus();
+    await showStateToast("STATE SAVED", token);
+
+    caption("07 / View state", "Navigate to Orion", "Leave the saved view and change the field of view.", "viewer.flyTo(83.633083, 22.0145, 2300)");
+    viewer.flyTo(83.633083, 22.0145, 2300);
+    await wait(2500, token);
+    await viewer.flyToFoV(5, 1400);
+    await wait(1200, token);
+
+    caption("07 / View state", "Restore M51", "Restore the previously saved astronomical state.", "viewer.restoreAstroViewerState(savedView, false)");
+    viewer.restoreAstroViewerState(savedView, false);
+    await wait(700, token);
+    await showStateToast("STATE RESTORED", token);
+    await wait(900, token);
     status.textContent = "A00 complete";
   } catch (error) {
     if (token === generation) {
