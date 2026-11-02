@@ -49,7 +49,10 @@ const mode =
     : "interactive";
 get<HTMLElement>("controls").hidden = mode === "video";
 const viewer = new AstroViewer(canvas, {
-  gridLabelContainers: { coords: get<HTMLDivElement>("coords-grid-labels") },
+  gridLabelContainers: {
+    coords: get<HTMLDivElement>("coords-grid-labels"),
+    healpix: get<HTMLDivElement>("healpix-grid-labels"),
+  },
 });
 viewer.run();
 const layers = new Map<SurveyKey, HiPS>();
@@ -595,6 +598,9 @@ function resetCameraConstraints(): void {
   viewer.setKeepCameraNorthUp(false);
   viewer.setRotationSensitivity(1);
 }
+function setHealpixGridVisible(visible: boolean): void {
+  if (viewer.isHealpixGridVisible() !== visible) viewer.toggleHealpixGrid();
+}
 function setEquatorialGridVisible(visible: boolean): void {
   if (viewer.isEquatorialGridVisible() !== visible)
     viewer.toggleEquatorialGrid();
@@ -603,6 +609,7 @@ async function reset(): Promise<void> {
   if (running) return;
   paused = false;
   setEquatorialGridVisible(false);
+  setHealpixGridVisible(false);
   clearCatalogue();
   clearObservations();
   hideInteraction();
@@ -620,10 +627,10 @@ async function reset(): Promise<void> {
   status.textContent = "Ready";
   controls();
 }
-type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 const initialScene = Number(new URLSearchParams(location.search).get("scene"));
 const requestedScene: SceneNumber =
-  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 7
+  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 8
     ? (initialScene as SceneNumber)
     : 1;
 
@@ -636,6 +643,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
   status.textContent = "Running A00";
   try {
     setEquatorialGridVisible(false);
+    setHealpixGridVisible(false);
     clearCatalogue();
     clearObservations();
     hideInteraction();
@@ -645,10 +653,11 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     const atM51 = startScene >= 3;
     viewer.goTo(atM51 ? 202.469575 : 83.633083, atM51 ? 47.195258 : 22.0145);
     viewer.setFoV(
-      startScene === 1 || startScene === 2 ? 65 : startScene <= 4 ? 0.5 : 5,
+      startScene === 1 || startScene === 2 ? 65 : startScene <= 4 ? 0.5 : startScene === 5 ? 60 : 5,
     );
     showOnly("optical");
     if (startScene === 4) setEquatorialGridVisible(true);
+    if (startScene === 5) setHealpixGridVisible(true);
     if (startScene > 1) title.classList.remove("visible");
     if (startScene <= 1) {
       title.classList.add("visible");
@@ -774,8 +783,46 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(1200, token);
     }
     if (startScene <= 5) {
+      // A03 HEALPix grid, independent from the equatorial grid and catalogues.
+      setEquatorialGridVisible(false);
+      viewer.goTo(202.469575, 47.195258);
+      viewer.setFoV(60);
       caption(
-        "05 / Catalogues",
+        "05 / HEALPix grid",
+        "HEALPix sky pixelisation",
+        "Display the hierarchical HEALPix grid used to organise HiPS sky tiles.",
+        "viewer.toggleHealpixGrid()",
+      );
+      setHealpixGridVisible(true);
+      await wait(2000, token);
+      caption(
+        "05 / HEALPix grid",
+        "Zoom in",
+        "Zoom towards M51 to reveal the changing HEALPix tessellation.",
+        "await viewer.flyToFoV(5, 2600)",
+      );
+      await viewer.flyToFoV(5, 2600);
+      await wait(1400, token);
+      caption(
+        "05 / HEALPix grid",
+        "Zoom out",
+        "Return to the wider sky while keeping the HEALPix grid visible.",
+        "await viewer.flyToFoV(60, 2600)",
+      );
+      await viewer.flyToFoV(60, 2600);
+      await wait(1500, token);
+      caption(
+        "05 / HEALPix grid",
+        "Hide HEALPix grid",
+        "Remove the grid before the scientific overlays.",
+        "viewer.toggleHealpixGrid()",
+      );
+      setHealpixGridVisible(false);
+      await wait(900, token);
+    }
+    if (startScene <= 6) {
+      caption(
+        "06 / Catalogues",
         "Hubble Source Catalog",
         "Return to M51 and display 40 HSC sources from the local A04 scientific fixture.",
         "viewer.createCatalogue(...); viewer.showCatalogue(catalogue)",
@@ -788,7 +835,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       // Demonstrate the catalogue colour API before source interactions.
       for (const color of ["#ffb347", "#a78bfa", INTERACTION_COLOR]) {
         caption(
-          "05 / Catalogues",
+          "06 / Catalogues",
           "Catalogue colour",
           "Change the HSC marker colour while preserving the scientific data.",
           "viewer.changeCatalogueColor(catalogue, color)",
@@ -801,7 +848,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       // Scientific styling from actual HSC columns: flux is a magnitude (mag),
       // and ci is the normalized concentration index. flux_sigma is constant here.
       caption(
-        "05 / Catalogues",
+        "06 / Catalogues",
         "Photometric magnitude",
         "Map the HSC flux (magnitude, mag) column to marker brightness.",
         "viewer.setCatalogueShapeHue(catalogue, 'flux')",
@@ -809,7 +856,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       viewer.setCatalogueShapeHue(hsc.catalogue, "flux");
       await wait(1900, token);
       caption(
-        "05 / Catalogues",
+        "06 / Catalogues",
         "Source concentration",
         "Map the HSC concentration index (ci) to marker size (8–20 px).",
         "viewer.setCatalogueShapeSize(catalogue, 'ci')",
@@ -834,7 +881,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
         const source = hscTargets[i];
         const selecting = i < 2;
         caption(
-          "05 / Catalogues",
+          "06 / Catalogues",
           selecting ? `HSC selection ${i + 1}/2` : `HSC hover ${i - 1}/2`,
           selecting
             ? "Hover the source, then preserve its selection."
@@ -861,7 +908,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(1800, token);
       hideInteraction();
       caption(
-        "05 / Catalogues",
+        "06 / Catalogues",
         "Restore optical sky",
         "Remove the catalogue overlay and return to the panoramic optical view.",
         "viewer.deleteCatalogue(catalogue)",
@@ -870,9 +917,9 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await viewer.flyToFoV(5, 1800);
       await wait(700, token);
     }
-    if (startScene <= 6) {
+    if (startScene <= 7) {
       caption(
-        "06 / Observations",
+        "07 / Observations",
         "Hubble observation coverage",
         "Display HST observation footprints around M51 using STC-S geometry.",
         "viewer.createFootprintSet(...); viewer.showFootprintSet(footprints)",
@@ -884,7 +931,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       // Demonstrate footprint colours independently of catalogue styling.
       for (const color of ["#ffb347", "#a78bfa", INTERACTION_COLOR]) {
         caption(
-          "06 / Observations",
+          "07 / Observations",
           "Footprint colour",
           "Change the HST observation outline and update the interaction legend.",
           "viewer.changeFootprintSetColor(footprints, color)",
@@ -910,7 +957,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       for (let i = 0; i < targets.length; i++) {
         const footprint = targets[i];
         caption(
-          "06 / Observations",
+          "07 / Observations",
           `HST footprint ${i + 1}/4`,
           "Move the pointer to hover; add the footprint to the persistent multi-selection.",
           "footprints.extAddPolygons2Selected(footprint)",
@@ -929,7 +976,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(2300, token);
       hideInteraction();
       caption(
-        "06 / Observations",
+        "07 / Observations",
         "Restore optical sky",
         "Remove the observation overlay and finish the showcase.",
         "viewer.deleteFootprintSet(footprints)",
@@ -938,10 +985,10 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await viewer.flyToFoV(5, 1800);
       await wait(700, token);
     }
-    if (startScene <= 7) {
-      // 07 — Scientific View State (A07): capture, navigate, restore.
+    if (startScene <= 8) {
+      // 08 — Scientific View State (A07): capture, navigate, restore.
       caption(
-        "07 / View state",
+        "08 / View state",
         "Save the M51 view",
         "Frame M51 and capture the astronomical viewing state.",
         "viewer.getCurrentAstroViewerStatus()",
@@ -958,7 +1005,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       }
       await showStateToast("STATE SAVED", token);
       caption(
-        "07 / View state",
+        "08 / View state",
         "Navigate to Orion",
         "Leave the saved view and change the field of view.",
         "viewer.flyTo(83.633083, 22.0145, 2300)",
@@ -969,7 +1016,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       await wait(1200, token);
 
       caption(
-        "07 / View state",
+        "08 / View state",
         "Restore M51",
         "Restore the previously saved astronomical state.",
         "viewer.restoreAstroViewerState(savedView, false)",
@@ -984,6 +1031,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     if (token === generation) {
       console.error("A00 sequence failed", error);
       setEquatorialGridVisible(false);
+      setHealpixGridVisible(false);
       clearObservations();
       hideInteraction();
       status.textContent = "A00 failed";
@@ -1025,7 +1073,7 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   const number = Number(event.key);
-  if (Number.isInteger(number) && number >= 1 && number <= 7 && !running) {
+  if (Number.isInteger(number) && number >= 1 && number <= 8 && !running) {
     void runA00(number as SceneNumber);
   }
 });
