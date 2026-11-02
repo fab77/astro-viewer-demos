@@ -653,6 +653,7 @@ async function reset(): Promise<void> {
   viewer.resetAxesOrientation();
   viewer.goTo(83.633083, 22.0145);
   viewer.setFoV(65);
+  if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
   if (layers.has("optical")) showOnly("optical");
   caption(
     "Opening",
@@ -663,10 +664,10 @@ async function reset(): Promise<void> {
   status.textContent = "Ready";
   controls();
 }
-type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 const initialScene = Number(new URLSearchParams(location.search).get("scene"));
 const requestedScene: SceneNumber =
-  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 10
+  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 11
     ? (initialScene as SceneNumber)
     : 1;
 
@@ -684,6 +685,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     clearObservations();
     hideInteraction();
     resetCameraConstraints();
+    if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
     viewer.resetAxesOrientation();
     // Direct scene entry: establish the same baseline without replaying earlier scenes.
     const atM51 = startScene >= 3 && startScene !== 4;
@@ -1235,6 +1237,78 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       );
       await wait(1200, token);
     }
+    if (startScene <= 11) {
+      // A09-inspired demonstration: use motion and the equatorial grid to
+      // make the change of perspective perceptible, not merely a toggle.
+      showOnly("optical");
+      viewer.changeColorMap("native");
+      setEquatorialGridVisible(false);
+      viewer.resetAxesOrientation();
+      viewer.goTo(83.633083, 22.0145);
+      viewer.setFoV(65);
+      caption(
+        "11 / Inside the sphere",
+        "Outside the celestial sphere",
+        "Begin with the external view. We will enter the sphere and navigate with the equatorial grid as a spatial reference.",
+        "viewer.getInsideSphere() // false",
+      );
+      await wait(2600, token);
+      try {
+        if (!viewer.getInsideSphere()) viewer.toggleInsideSphere();
+        setEquatorialGridVisible(true);
+        caption(
+          "11 / Inside the sphere",
+          "Inside — equatorial grid",
+          "The camera now looks outward from within the celestial sphere. Right ascension and declination lines help reveal its surrounding geometry.",
+          "viewer.toggleInsideSphere(); viewer.toggleEquatorialGrid()",
+        );
+        await wait(2500, token);
+
+        caption(
+          "11 / Inside the sphere",
+          "Look around from inside",
+          "Rotate the view while the coordinate grid remains visible: the sky surrounds the observer rather than appearing as an external globe.",
+          "// Pointer drag: rotate the camera",
+        );
+        await demonstrateCameraDrag(220, 100, token);
+        await wait(600, token);
+        await demonstrateCameraDrag(-140, -50, token);
+        await wait(900, token);
+
+        caption(
+          "11 / Inside the sphere",
+          "Towards the Galactic Centre",
+          "Navigate across the interior sky towards the Milky Way's Galactic Centre, keeping the coordinate grid visible.",
+          "viewer.flyTo(266.4051, -28.936175, 3200)",
+        );
+        viewer.flyTo(266.4051, -28.936175, 3200);
+        await wait(3500, token);
+
+        caption(
+          "11 / Inside the sphere",
+          "Across the sky to M51",
+          "A second rotation carries the observer towards the Whirlpool Galaxy, demonstrating navigation from inside the sphere.",
+          "viewer.flyTo(202.4696, 47.1952, 3200)",
+        );
+        viewer.flyTo(202.4696, 47.1952, 3200);
+        await wait(3500, token);
+        await viewer.flyToFoV(5, 2200);
+        await wait(1000, token);
+      } finally {
+        setEquatorialGridVisible(false);
+        if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
+        viewer.resetAxesOrientation();
+        viewer.goTo(202.4696, 47.1952);
+      }
+      caption(
+        "11 / Inside the sphere",
+        "Back outside — reveal the sphere",
+        "Exit the celestial sphere and widen the field of view to make the external geometry apparent again.",
+        "viewer.toggleInsideSphere(); viewer.flyToFoV(120, 4200)",
+      );
+      await viewer.flyToFoV(120, 4200);
+      await wait(1500, token);
+    }
     status.textContent = "A00 complete";
   } catch (error) {
     if (token === generation) {
@@ -1243,6 +1317,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       setHealpixGridVisible(false);
       clearObservations();
       hideInteraction();
+      if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
       status.textContent = "A00 failed";
     }
   } finally {
