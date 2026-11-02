@@ -6,6 +6,7 @@ declare global {
     ready: boolean;
     mode: "video" | "interactive";
 
+    runA00?: () => Promise<void>;
     runA01?: () => Promise<void>;
     runA02?: () => Promise<void>;
     runA03?: () => Promise<void>;

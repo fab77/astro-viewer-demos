@@ -74,11 +74,10 @@ const surveys = {
     url: "https://skies.esac.esa.int/Herschel/SPIRE250/",
   },
 
-  xmm: {
-    name: "XMM-Newton EPIC-RGB",
+  chandra: {
+    name: "Chandra X-ray",
     wavelength: "X-ray",
-    // url: "https://alasky.cds.unistra.fr/SSC/xcatdb_P_XMM_PN_color/",
-    url: "https://esdchips.esac.esa.int/XMM-Newton/EPIC-RGB/",
+    url: "https://cdaftp.cfa.harvard.edu/cxc-hips/",
   },
 } as const;
 
@@ -93,7 +92,7 @@ let running = false;
 let sdssLayer: HiPS | null = null;
 let galexLayer: HiPS | null = null;
 let spireLayer: HiPS | null = null;
-let xmmLayer: HiPS | null = null;
+let chandraLayer: HiPS | null = null;
 
 async function waitWhilePaused(): Promise<void> {
   while (paused) {
@@ -200,11 +199,11 @@ async function reset(): Promise<void> {
 
   removeLayer(spireLayer);
 
-  removeLayer(xmmLayer);
+  removeLayer(chandraLayer);
 
   galexLayer = null;
   spireLayer = null;
-  xmmLayer = null;
+  chandraLayer = null;
 
   await ensurePrimarySurvey();
 
@@ -309,7 +308,7 @@ async function runA02(): Promise<void> {
       1800,
     );
     galexLayer = await viewer.addHiPSFromUrl(surveys.galex.url);
-    showOnly(galexLayer, [sdssLayer, galexLayer, spireLayer, xmmLayer]);
+    showOnly(galexLayer, [sdssLayer, galexLayer, spireLayer, chandraLayer]);
     await demoWait(3000);
 
     await showLabel(
@@ -321,35 +320,35 @@ async function runA02(): Promise<void> {
     );
 
     spireLayer = await viewer.addHiPSFromUrl(surveys.spire.url);
-    showOnly(spireLayer, [sdssLayer, galexLayer, spireLayer, xmmLayer]);
+    showOnly(spireLayer, [sdssLayer, galexLayer, spireLayer, chandraLayer]);
     await demoWait(3000);
 
     await showLabel(
-      "XMM EPIC-RGB — X-ray",
+      "Chandra — X-ray",
       "View the same target in X-rays.",
-      `const xmm = await viewer.addHiPSFromUrl("${surveys.xmm.url}")
-        viewer.setActiveHiPS(xmm)`,
+      `const chandra = await viewer.addHiPSFromUrl("${surveys.chandra.url}")
+        viewer.setActiveHiPS(chandra)`,
       1800,
     );
-    xmmLayer = await viewer.addHiPSFromUrl(surveys.xmm.url);
-    showOnly(xmmLayer, [sdssLayer, galexLayer, spireLayer, xmmLayer]);
+    chandraLayer = await viewer.addHiPSFromUrl(surveys.chandra.url);
+    showOnly(chandraLayer, [sdssLayer, galexLayer, spireLayer, chandraLayer]);
     await demoWait(3000);
 
     await showLabel(
       "Multi-layer comparison",
       "Blend X-ray and optical data using layer opacity.",
-      "viewer.setHiPSOpacity(xmm, 0.55)",
+      "viewer.setHiPSOpacity(chandra, 0.55)",
       1600,
     );
 
     viewer.setHiPSOpacity(sdssLayer!, 1);
     viewer.setHiPSOpacity(galexLayer!, 0);
     viewer.setHiPSOpacity(spireLayer!, 0);
-    viewer.setHiPSOpacity(xmmLayer!, 0);
+    viewer.setHiPSOpacity(chandraLayer!, 0);
 
-    viewer.setActiveHiPS(xmmLayer!);
+    viewer.setActiveHiPS(chandraLayer!);
 
-    await fadeOpacity(xmmLayer!, 0, 0.55, 4500);
+    await fadeOpacity(chandraLayer!, 0, 0.55, 4500);
 
     await demoWait(1200);
 
@@ -359,7 +358,7 @@ async function runA02(): Promise<void> {
       `viewer.setActiveHiPS(sdss)
 viewer.removeHiPS(galex)
 viewer.removeHiPS(spire)
-viewer.removeHiPS(xmm)`,
+viewer.removeHiPS(chandra)`,
       1900,
     );
 
@@ -369,11 +368,11 @@ viewer.removeHiPS(xmm)`,
 
     removeLayer(spireLayer);
 
-    removeLayer(xmmLayer);
+    removeLayer(chandraLayer);
 
     galexLayer = null;
     spireLayer = null;
-    xmmLayer = null;
+    chandraLayer = null;
 
     await demoWait(1800);
 
@@ -404,11 +403,11 @@ async function resetForRun(): Promise<void> {
 
   removeLayer(spireLayer);
 
-  removeLayer(xmmLayer);
+  removeLayer(chandraLayer);
 
   galexLayer = null;
   spireLayer = null;
-  xmmLayer = null;
+  chandraLayer = null;
 
   await ensurePrimarySurvey();
 

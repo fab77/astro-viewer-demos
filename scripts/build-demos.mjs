@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { build } from "vite";
 
 const demos = [
+  "a00-astronomy-showcase",
   "a01-navigation-fov",
   "a02-hips-surveys",
   "a03-grids-coordinates",
@@ -11,6 +12,8 @@ const demos = [
   "a06-interaction-colours",
   "a07-scientific-view-state",
   "a08-developer-integration",
+  "a09-inside-the-sphere",
+  "a10-camera-controls",
 ];
 
 const projectRoot = process.cwd();

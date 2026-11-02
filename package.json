@@ -20,16 +20,16 @@
     "test:a06": "playwright test playwright/a06-interaction-colours.spec.ts --headed",
     "demo:a07": "vite src/demos/a07-scientific-view-state",
     "test:a07": "playwright test playwright/a07-scientific-view-state.spec.ts --headed",
-    
     "demo:a08": "vite src/demos/a08-developer-integration",
     "test:a08": "playwright test playwright/a08-developer-integration.spec.ts --headed",
-
     "demo:a09": "vite src/demos/a09-inside-the-sphere",
     "test:a09": "playwright test playwright/a09-inside-the-sphere.spec.ts --headed",
     "demo:a10": "vite src/demos/a10-camera-controls",
     "test:a10": "playwright test playwright/a10-camera-controls.spec.ts --headed",
     "capture:portfolio": "node scripts/capture-portfolio-visuals.mjs",
-    "build": "node scripts/build-demos.mjs"
+    "build": "node scripts/build-demos.mjs",
+    "demo:a00": "vite src/demos/a00-astronomy-showcase",
+    "test:a00": "playwright test playwright/a00-astronomy-showcase.spec.ts --headed"
   },
   "repository": {
     "type": "git",
