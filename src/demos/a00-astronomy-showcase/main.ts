@@ -909,12 +909,11 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       hideInteraction();
       caption(
         "06 / Catalogues",
-        "Restore optical sky",
-        "Remove the catalogue overlay and return to the panoramic optical view.",
+        "Hide catalogue",
+        "Remove the HSC overlay before showing HST observation footprints.",
         "viewer.deleteCatalogue(catalogue)",
       );
       clearCatalogue();
-      await viewer.flyToFoV(5, 1800);
       await wait(700, token);
     }
     if (startScene <= 7) {
@@ -924,9 +923,13 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
         "Display HST observation footprints around M51 using STC-S geometry.",
         "viewer.createFootprintSet(...); viewer.showFootprintSet(footprints)",
       );
-      viewer.flyTo(202.469575, 47.195258, 2300);
-      await wait(2500, token);
-      await viewer.flyToFoV(0.5, 2100);
+      // Only initialise the camera when opening scene 07 directly.
+      // During continuous playback, preserve the catalogue camera view.
+      if (startScene === 7) {
+        viewer.flyTo(202.469575, 47.195258, 2300);
+        await wait(2500, token);
+        await viewer.flyToFoV(0.5, 2100);
+      }
       const hst = await showHstObservations();
       // Demonstrate footprint colours independently of catalogue styling.
       for (const color of ["#ffb347", "#a78bfa", INTERACTION_COLOR]) {
