@@ -4,6 +4,7 @@
   "description": "Executable demos and video tutorial scenarios for AstroViewer.",
   "main": "index.js",
   "scripts": {
+    "test:all": "node scripts/test-all.mjs",
     "audit:fov": "vite src/audit",
     "demo:a01": "vite src/demos/a01-navigation-fov",
     "test:a01": "playwright test playwright/a01-navigation-fov.spec.ts --headed",
@@ -25,6 +26,8 @@
 
     "demo:a09": "vite src/demos/a09-inside-the-sphere",
     "test:a09": "playwright test playwright/a09-inside-the-sphere.spec.ts --headed",
+    "demo:a10": "vite src/demos/a10-camera-controls",
+    "test:a10": "playwright test playwright/a10-camera-controls.spec.ts --headed",
     "capture:portfolio": "node scripts/capture-portfolio-visuals.mjs",
     "build": "node scripts/build-demos.mjs"
   },

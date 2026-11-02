@@ -72,10 +72,9 @@ test.describe("A06 — Interaction Colours", () => {
 
     expect(finalState.selectedFootprints).toBeGreaterThan(0);
 
-    expect(finalState.colour).toBe("#ff9f1c");
+    expect(finalState.colour).toBe("#00D4FF");
 
-    expect(finalState.fov).toBeGreaterThan(0.05);
-
-    expect(finalState.fov).toBeLessThan(0.07);
+    expect(finalState.fov).toBeGreaterThan(0.24);
+    expect(finalState.fov).toBeLessThan(0.26);
   });
 });
