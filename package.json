@@ -43,7 +43,7 @@
   },
   "homepage": "https://github.com/fab77/astro-viewer-demos#readme",
   "dependencies": {
-    "astro-viewer": "3.14.0"
+    "astro-viewer": "3.15.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
