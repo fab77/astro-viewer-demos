@@ -25,6 +25,7 @@
     "demo:a09": "vite src/demos/a09-inside-the-sphere",
     "test:a09": "playwright test playwright/a09-inside-the-sphere.spec.ts --headed",
     "demo:a10": "vite src/demos/a10-camera-controls",
+    "demo:a11": "vite src/demos/a11-state-management",
     "test:a10": "playwright test playwright/a10-camera-controls.spec.ts --headed",
     "capture:portfolio": "node scripts/capture-portfolio-visuals.mjs",
     "build": "node scripts/build-demos.mjs",
@@ -43,7 +44,7 @@
   },
   "homepage": "https://github.com/fab77/astro-viewer-demos#readme",
   "dependencies": {
-    "astro-viewer": "3.15.0"
+    "astro-viewer": "3.16.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

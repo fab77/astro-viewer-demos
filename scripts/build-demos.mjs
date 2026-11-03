@@ -14,6 +14,7 @@ const demos = [
   "a08-developer-integration",
   "a09-inside-the-sphere",
   "a10-camera-controls",
+  "a11-state-management",
 ];
 
 const projectRoot = process.cwd();
