@@ -812,9 +812,8 @@ async function fadeHiPS(
     const opacity = start + (end - start) * (i / count);
     viewer.setHiPSOpacity(layer, opacity);
   }
+  updateProvenance();
 }
-
-
 
 const arrowCursor = demoPointer.innerHTML;
 function cursorGesture(grabbing: boolean): void {
@@ -2271,7 +2270,7 @@ async function scene09FITS(token: number): Promise<void> {
   viewer.changeHiPSFormat("png");
   viewer.changeColorMap("native");
   caption(
-    "09 / FITS scientific visualization",
+    "09 / FITS & color mapping",
     "Herschel SPIRE 250 µm — PNG",
     "Start with the image tiles of the same far-infrared survey.",
     'viewer.setActiveHiPS(herschel); viewer.setHiPSOpacity(herschel, 1); viewer.changeHiPSFormat("png"); viewer.changeColorMap("native")',
@@ -2279,7 +2278,7 @@ async function scene09FITS(token: number): Promise<void> {
   await wait(12000, token);
   await prepareFITS(herschel, token);
   caption(
-    "09 / FITS — scientific pixel values",
+    "09 / FITS & color mapping",
     "FITS — linear grayscale",
     "Unlike pre-rendered PNG tiles, FITS contains numerical intensity measurements. Linear stretch maps equal intensity differences to equal display steps; robust limits reduce the impact of extremes.",
     'viewer.changeColorMap("grayscale"); viewer.setHiPSFITSScaleFunction("linear"); viewer.setHiPSFITSRangeMode("robust")',
@@ -2306,7 +2305,7 @@ async function scene09FITS(token: number): Promise<void> {
   for (const map of colorMaps) {
     viewer.changeColorMap(map.name);
     caption(
-      "09 / FITS — color mapping",
+      "09 / FITS & color mapping",
       `Color map — ${map.name}`,
       map.description,
       `viewer.changeColorMap("${map.name}")`,
@@ -2321,7 +2320,7 @@ async function scene09FITS(token: number): Promise<void> {
   });
   viewer.changeCustomColorMap(custom);
   caption(
-    "09 / FITS — color mapping",
+    "09 / FITS & color mapping",
     "A custom palette",
     "A demo-defined amber palette maps the same measured intensities.",
     'viewer.changeCustomColorMap(createColorMapFromSamples("A00 amber", channels))',
@@ -2354,7 +2353,7 @@ async function scene09FITS(token: number): Promise<void> {
   for (const stretch of stretches) {
     viewer.setHiPSFITSScaleFunction(stretch.name);
     caption(
-      "09 / FITS — intensity stretch",
+      "09 / FITS & color mapping",
       `Intensity stretch — ${stretch.name}`,
       stretch.description,
       `viewer.changeColorMap("planck"); viewer.setHiPSFITSScaleFunction("${stretch.name}")`,
@@ -2377,7 +2376,7 @@ async function scene09FITS(token: number): Promise<void> {
   for (const range of ranges) {
     viewer.setHiPSFITSRangeMode(range.name);
     caption(
-      "09 / FITS — intensity range",
+      "09 / FITS & color mapping",
       range.name === "hips"
         ? "Range — HiPS global limits"
         : "Range — robust contrast",
@@ -2396,7 +2395,7 @@ async function scene09FITS(token: number): Promise<void> {
   showOnly("optical");
   viewer.changeColorMap("native");
   caption(
-    "09 / FITS scientific visualization",
+    "09 / FITS & color mapping",
     "Return to DSS Color",
     "Restore the optical survey after the FITS demonstration.",
     'viewer.changeHiPSFormat("png"); viewer.setHiPSOpacity(herschel, 0); viewer.setActiveHiPS(optical); viewer.setHiPSOpacity(optical, 1); viewer.changeColorMap("native")',
@@ -2405,24 +2404,28 @@ async function scene09FITS(token: number): Promise<void> {
 }
 
 async function scene10InsideSphere(token: number): Promise<void> {
-  // A09-inspired demonstration: use motion and the equatorial grid to
-  // make the change of perspective perceptible, not merely a toggle.
+  // M51 → Galactic Centre → M33 → M81/M82 → M31; fade the maps before changing perspective.
+  await ensureLayer("sdss");
+  await ensureLayer("ultraviolet");
+  await ensureLayer("midinfrared");
   showOnly("optical");
   viewer.changeColorMap("native");
   setEquatorialGridVisible(false);
   viewer.resetAxesOrientation();
   caption(
     "10 / Inside the sphere",
-    "Widen the optical sky",
-    "Reset the axes and widen the DSS field before entering the celestial sphere.",
-    "viewer.resetAxesOrientation(); await viewer.flyToFoV(120, 3200)",
+    "M51 — widen the optical sky",
+    "Frame M51 and widen the DSS field before entering the celestial sphere.",
+    "viewer.resetAxesOrientation(); viewer.flyTo(202.469575, 47.195258, 2600); await viewer.flyToFoV(120, 3200)",
   );
+  viewer.flyTo(202.469575, 47.195258, 2600);
+  await wait(2900, token);
   await viewer.flyToFoV(120, 3200);
   caption(
     "10 / Inside the sphere",
     "Outside the celestial sphere",
     "Begin with the external view. We will enter the sphere and navigate with the equatorial grid as a spatial reference.",
-    "viewer.getInsideSphere() // false",
+    'await fadeHiPS("optical", 1, 0, token); viewer.toggleInsideSphere(); await fadeHiPS("optical", 0, 1, token)',
   );
   await wait(2600, token);
   
@@ -2452,39 +2455,98 @@ async function scene10InsideSphere(token: number): Promise<void> {
     viewer.flyTo(266.4051, -28.936175, 3200);
     await wait(3500, token);
 
+    // Keep the preferred field here after comparing the three candidates.
+    const galaxies = [
+      // { name: "M33", ra: 23.4621, dec: 30.66, fov: 1.2 },
+      { name: "M81 / M82", ra: 148.93, dec: 69.37, fov: 1.2 },
+      // { name: "M31", ra: 10.6847, dec: 41.269, fov: 3 },
+    ];
+    
+    for (const field of galaxies) {
+      caption(
+        "10 / Inside the sphere",
+        `Travel to ${field.name}`,
+        "Restore DSS and frame the next galaxy comparison.",
+        `await fadeTo("optical", token); viewer.flyTo(${field.ra}, ${field.dec}, 3200); await viewer.flyToFoV(${field.fov}, 2200)`,
+      );
+      await fadeTo("optical", token);
+      viewer.flyTo(field.ra, field.dec, 3200);
+      await wait(3500, token);
+      await viewer.flyToFoV(field.fov, 2200);
+      setEquatorialGridVisible(false);
+      caption(
+        "10 / Inside the sphere",
+        `${field.name} — DSS Color`,
+        `Optical baseline · FoV ${field.fov}°`,
+        'viewer.setActiveHiPS(optical); viewer.changeColorMap("native")',
+      );
+      viewer.setActiveHiPS(layers.get("optical")!);
+      viewer.changeColorMap("native");
+      await wait(3500, token);
+      caption(
+        "10 / Inside the sphere",
+        `${field.name} — SDSS Color`,
+        "Compare the optical surveys before adding ultraviolet and infrared light.",
+        'await fadeTo("sdss", token); viewer.changeColorMap("native")',
+      );
+      await fadeTo("sdss", token);
+      viewer.changeColorMap("native");
+      await wait(3500, token);
+
+      for (const key of ["ultraviolet", "midinfrared"] as const) {
+        const overlay = layers.get(key)!;
+        const label = key === "ultraviolet" ? "GALEX" : "AllWISE";
+        viewer.setActiveHiPS(overlay);
+        viewer.changeColorMap("native");
+        for (const [from, to] of [[0, 0.65], [0.65, 0.25], [0.25, 0.8]]) {
+          caption(
+            "10 / Inside the sphere",
+            `${field.name} — SDSS + ${label} · ${Math.round(to * 100)}%`,
+            "Compare the same opacity levels across all three fields. The provenance box identifies the visible bands.",
+            `viewer.setActiveHiPS(${label.toLowerCase()}); viewer.changeColorMap("native"); await fadeHiPS("${key}", ${from}, ${to}, token, 2200, 40)`,
+          );
+          await fadeHiPS(key, from, to, token, 2200, 40);
+          await wait(3000, token);
+        }
+        caption(
+          "10 / Inside the sphere",
+          `${field.name} — fade out ${label}`,
+          "Return to the SDSS optical baseline.",
+          `await fadeHiPS("${key}", 0.8, 0, token, 1800, 30)`,
+        );
+        await fadeHiPS(key, 0.8, 0, token, 1800, 30);
+      }
+    }
+
     caption(
       "10 / Inside the sphere",
-      "Across the sky to B33",
-      "A second rotation carries the observer towards the Horsehead Nebula, demonstrating navigation from inside the sphere.",
-      "viewer.flyTo(85.2458, -2.4583, 3200)",
+      "Fade out — leave the sphere",
+      "Fade the remaining optical map to zero before returning to the external view.",
+      'await fadeHiPS("sdss", 1, 0, token, 1800, 30); viewer.toggleInsideSphere()',
     );
-    // viewer.flyTo(202.4696, 47.1952, 3200);
-    viewer.flyTo(85.2458, -2.4583, 3200);
-    await wait(3500, token);
+    await fadeHiPS("sdss", 1, 0, token, 1800, 30);
+    viewer.toggleInsideSphere();
+    viewer.resetAxesOrientation();
+    // Keep every map transparent while selecting the sole visible survey.
+    const optical = layers.get("optical")!;
+    viewer.setActiveHiPS(optical);
+    activeKey = "optical";
+    viewer.changeColorMap("native");
     caption(
       "10 / Inside the sphere",
-      "Narrow the B33 field",
-      "Zoom in while remaining inside the sphere.",
-      "await viewer.flyToFoV(5, 2200)",
+      "Back outside — DSS Color",
+      "Reveal DSS alone, then widen the field to show the celestial sphere.",
+      'viewer.setActiveHiPS(optical); await fadeHiPS("optical", 0, 1, token, 2200, 40); await viewer.flyToFoV(120, 4200)',
     );
-    await viewer.flyToFoV(5, 2200);
-    await wait(1000, token);
-
-
+    await fadeHiPS("optical", 0, 1, token, 2200, 40);
+    await viewer.flyToFoV(120, 4200);
+    await wait(1500, token);
   } finally {
     setEquatorialGridVisible(false);
     if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
     viewer.resetAxesOrientation();
-    viewer.goTo(85.2458, -2.4583);
+    showOnly("optical");
   }
-  caption(
-    "10 / Inside the sphere",
-    "Back outside — reveal the sphere",
-    "Exit the celestial sphere and widen the field of view to make the external geometry apparent again.",
-    "viewer.toggleInsideSphere(); viewer.flyToFoV(120, 4200)",
-  );
-  await viewer.flyToFoV(120, 4200);
-  await wait(1500, token);
 }
 
 // Scene titles and the closing diagrams are presentation only: no camera changes.
