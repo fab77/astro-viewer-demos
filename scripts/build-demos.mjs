@@ -1,40 +1,31 @@
-import { rm } from "node:fs/promises";
+import { readdir, rm, access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { build } from "vite";
 
-const demos = [
-  "a00-astronomy-showcase",
-  "a01-navigation-fov",
-  "a02-hips-surveys",
-  "a03-grids-coordinates",
-  "a04-catalogues",
-  "a05-observations-footprints",
-  "a06-interaction-colours",
-  "a07-scientific-view-state",
-  "a08-developer-integration",
-  "a09-inside-the-sphere",
-  "a10-camera-controls",
-  "a11-state-management",
-];
-
 const projectRoot = process.cwd();
+const demosRoot = resolve(projectRoot, "src", "demos");
 const distRoot = resolve(projectRoot, "dist");
-
+const entries = await readdir(demosRoot, { withFileTypes: true });
+const demos = [];
+for (const entry of entries) {
+  if (!entry.isDirectory()) continue;
+  const root = resolve(demosRoot, entry.name);
+  try {
+    await access(resolve(root, "index.html"));
+    demos.push(entry.name);
+  } catch {
+    // Only directories containing an HTML entry point are buildable showcases.
+  }
+}
+demos.sort();
+if (demos.length === 0) throw new Error("No showcase entry points found in src/demos");
 await rm(distRoot, { recursive: true, force: true });
-
 for (const demo of demos) {
-  const root = resolve(projectRoot, "src", "demos", demo);
-  const outDir = resolve(distRoot, demo);
-
   console.log(`\nBuilding ${demo}...`);
   await build({
-    root,
+    root: resolve(demosRoot, demo),
     base: "./",
-    build: {
-      outDir,
-      emptyOutDir: false,
-    },
+    build: { outDir: resolve(distRoot, demo), emptyOutDir: false },
   });
 }
-
-console.log(`\nBuilt ${demos.length} demos in ${distRoot}`);
+console.log(`\nBuilt ${demos.length} showcase(s) in ${distRoot}`);
