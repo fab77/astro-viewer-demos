@@ -21,16 +21,10 @@
           sans-serif;
       }
       header {
-        height: 54px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 24px;
-        background: #06152b;
-        border-bottom: 1px solid #ffffff25;
+        display: none;
       }
       main {
-        height: calc(100% - 54px);
+        height: 100%;
         position: relative;
       }
       #astrocanvas {
@@ -661,7 +655,7 @@
     </header>
     <main>
       <canvas id="astrocanvas"></canvas>
-      <div id="sw-version">astro-viewer v3.17.0</div>
+      <div id="sw-version">astro-viewer v%ASTRO_VIEWER_VERSION%</div>
       <div id="scene-intro" hidden>
         <small></small>
         <h1></h1>
