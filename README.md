@@ -113,6 +113,21 @@ This mode is intended for:
 
 # Available Astronomy demos
 
+## A00 — Astronomy Showcase
+
+A twelve-scene silent video sequence: navigation, multiwavelength HiPS, compositing, coordinates, grids, scientific overlays, TAP/ADQL, JSON/CSV, saved scientific state, FITS and inside-sphere navigation.
+
+```bash
+npm run demo:a00 -- --host 127.0.0.1
+npm run test:a00 -- --workers=1
+```
+
+Open <http://127.0.0.1:5173/> for controls, or <http://127.0.0.1:5173/?mode=video> for automatic playback. A00 also supports `?mode=video&scene=03` (01–12). The complete sequence takes several minutes; its regression test plays it twice.
+
+See [A00 review notes](audit/a00/README.md) for direct scene links, scientific credits, dataset decisions, compatibility fixes and verification results.
+
+---
+
 ## A01 — Navigation & Field of View
 
 Demonstrates:
@@ -619,3 +634,10 @@ dist/
 ```
 
 Each directory can be deployed independently under any static web path. Asset URLs are relative, so the build does not depend on a particular host, domain, or portfolio application.
+
+
+### A00 review: scenes 01–07
+
+Use `http://127.0.0.1:5173/?mode=video&end=07` for the current review boundary, or add `&scene=02`, `03`, `05`, `06` or `07`. The full twelve-scene playback remains available without `end=07`. See [roadmap and dependency diagrams](ROADMAP.md) and [November review evidence](audit/a00/review-2026-11-05.md). Web provenance links are clickable; a recorded video only contains their pixels, so put URLs in its description or companion page.
+
+Latest A00 follow-up: [caption audit, GALEX MAST and three clickable saved views](audit/a00/review-states-and-captions.md). Open `?scene=09` for interactive controls or `?mode=video&scene=09` for automatic playback. Pause at “Three saved views” to explore the cards manually.

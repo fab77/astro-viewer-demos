@@ -1,0 +1,15 @@
+
+> astro-viewer-demos@1.0.0 test:a00
+> playwright test playwright/a00-astronomy-showcase.spec.ts --headed --workers=1 --grep A00 review|TAP real request
+
+
+Running 3 tests using 1 worker
+
+(node:44502) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 playwright/a00-astronomy-showcase.spec.ts:117:5 › A00 review camera gestures and live coordinate dimensions (36.0s)
+  ✓  2 playwright/a00-astronomy-showcase.spec.ts:143:5 › A00 review selected metadata persists through hover and footprints (1.3m)
+ESASky TAP response: HTTP 503
+  ✓  3 playwright/a00-astronomy-showcase.spec.ts:165:5 › A00 TAP real request distinguishes live data from service failure (8.8s)
+
+  3 passed (2.1m)

@@ -12,7 +12,12 @@ import {
   type HiPS,
   type Source,
 } from "astro-viewer";
-import { FetchHttpTransport } from "astrospatial-services";
+import {
+  FetchHttpTransport,
+  parseJsonTable,
+  parseCsvTable,
+  SesameService,
+} from "astrospatial-services";
 import {
   TapService,
   parseVOTable,
@@ -22,6 +27,21 @@ import csvUrl from "./hsc_m51_sources.csv?url";
 import hscUrl from "./hsc_m51_sources.json?url";
 import hstUrl from "./hst_m51_observations.json?url";
 import m101Url from "./hsc_m101_sources.json?url";
+
+const XMM_TAP_ENDPOINT = "https://nxsa.esac.esa.int/tap-server/tap";
+const transport = new FetchHttpTransport((input, init) =>
+  fetch(
+    String(input).replace(XMM_TAP_ENDPOINT, `${location.origin}/api/xmm-tap`),
+    init,
+  ),
+);
+const services = {
+  xmm: new TapService({
+    endpoint: XMM_TAP_ENDPOINT,
+    transport,
+    timeoutMs: 30000,
+  }),
+};
 
 type SurveyKey =
   | "hstimage"
@@ -35,6 +55,7 @@ type SurveyKey =
   | "ultraviolet"
   | "infrared"
   | "xray"
+  | "xmm"
   | "nearinfrared"
   | "midinfrared"
   | "herschelfits";
@@ -78,6 +99,10 @@ const surveys: Record<SurveyKey, { name: string; url: string }> = {
   infrared: {
     name: "Herschel SPIRE 250 µm — Far infrared",
     url: "https://skies.esac.esa.int/Herschel/SPIRE250/",
+  },
+  xmm: {
+    name: "XMM-Newton EPIC — X-ray RGB",
+    url: "https://esdchips.esac.esa.int/XMM-Newton/EPIC-RGB/",
   },
   xray: {
     name: "Chandra — X-ray",
@@ -127,9 +152,22 @@ const metadataBox = document.createElement("aside");
 metadataBox.id = "metadata-box";
 metadataBox.hidden = true;
 document.querySelector("main")!.append(metadataBox);
+const dataExample = document.createElement("aside");
+dataExample.id = "data-example";
+dataExample.hidden = true;
+document.querySelector("main")!.append(dataExample);
+function showDataExample(label: string, text: string): void {
+  const title = document.createElement("strong");
+  title.textContent = label;
+  const pre = document.createElement("pre");
+  pre.textContent = text;
+  dataExample.replaceChildren(title, pre);
+  dataExample.hidden = false;
+}
+
 const coordinateHud = document.createElement("aside");
 coordinateHud.id = "coordinate-hud";
-coordinateHud.hidden = true;
+
 document.querySelector("main")!.append(coordinateHud);
 const surveyCredits: Record<SurveyKey, string> = {
   hstimage:
@@ -144,6 +182,7 @@ const surveyCredits: Record<SurveyKey, string> = {
   ultraviolet: "GALEX · FUV 134–179 nm / NUV 177–283 nm · NASA / MAST",
   infrared: "Herschel SPIRE · 250 µm · ESA · black regions: no coverage",
   herschelfits: "Herschel SPIRE · 250 µm · ESA · palette ≠ dataset",
+  xmm: "XMM-Newton EPIC RGB · ESA / XSA · pointed X-ray observations",
   xray: "Chandra · 0.5–7 keV · NASA / CXC · pointed observations",
   nearinfrared: "2MASS · J/H/Ks 1.25 / 1.65 / 2.16 µm · UMass / IPAC",
   midinfrared: "AllWISE · W1/W2/W4 3.4 / 4.6 / 22 µm · NASA / IPAC",
@@ -166,9 +205,9 @@ function updateProvenance(): void {
     ...(visible.some((h) => h.format === "fits") ? ["FITS"] : []),
   ];
   if (catalogue?.isVisible) protocols.push("Catalogue metadata");
-  if (observationSet?.isVisible)
-    protocols.push("HST / STC-S · local JSON fixture");
-  if (scene === 7) protocols.push(`TAP / ADQL / VOTable · ${audit.tap}`);
+  if (observationSet?.isVisible) protocols.push(observationProvenance);
+  if (scene === 6 && audit.tap !== "not run")
+    protocols.push(`TAP / ADQL / VOTable · ${audit.tap}`);
   const signature = JSON.stringify([
     visible.map((h) => [
       h.baseURL,
@@ -284,33 +323,11 @@ async function showHscCatalogue(): Promise<{
   }
   const data = hscFixture;
   if (!data.rows.length) throw new Error("HSC fixture has no sources");
-  const columns = data.columns.map(
-    (column, index) =>
-      new MetadataColumn({
-        index,
-        name: column.name,
-        columnType:
-          column.name === data.mapping.ra
-            ? ColumnType.GEOM_RA
-            : column.name === data.mapping.dec
-              ? ColumnType.GEOM_DEC
-              : column.name === data.mapping.name
-                ? ColumnType.MAIN_NAME
-                : column.numeric
-                  ? ColumnType.NUMBER
-                  : ColumnType.STRING,
-        unit: column.unit ?? "",
-        description: column.description ?? "",
-      }),
-  );
-  const created = viewer.createCatalogue(
-    data.name,
-    data.description,
-    data.source,
-    new MetadataManager(columns),
-  );
-  created.addSources(data.rows, columns);
-  viewer.showCatalogue(created);
+  const created = viewer.addCatalogue(parseJsonTable(data), {
+    name: data.name,
+    description: data.description,
+    providerUrl: data.source,
+  });
   catalogue = created;
   const raIndex = data.columns.findIndex((c) => c.name === data.mapping.ra);
   const decIndex = data.columns.findIndex((c) => c.name === data.mapping.dec);
@@ -352,6 +369,7 @@ type HstFixture = {
 };
 let hstFixture: HstFixture | null = null;
 let observationSet: FootprintSetGL | null = null;
+let observationProvenance = "HST / STC-S · local JSON fixture";
 function clearObservations(): void {
   if (!observationSet) return;
   observationSet.clearSelection();
@@ -374,36 +392,13 @@ async function showHstObservations(): Promise<{
   }
   const data = hstFixture;
   if (!data.rows.length) throw new Error("HST fixture has no observations");
-  const columns = data.columns.map(
-    (column, index) =>
-      new MetadataColumn({
-        index,
-        name: column.name,
-        columnType:
-          column.name === data.mapping.ra
-            ? ColumnType.GEOM_RA
-            : column.name === data.mapping.dec
-              ? ColumnType.GEOM_DEC
-              : column.name === data.mapping.footprint
-                ? ColumnType.GEOM_FOOTPRINT
-                : column.name === data.mapping.name
-                  ? ColumnType.MAIN_NAME
-                  : column.numeric
-                    ? ColumnType.NUMBER
-                    : ColumnType.STRING,
-        unit: column.unit ?? "",
-        description: column.description ?? "",
-      }),
-  );
-  const set = viewer.createFootprintSet(
-    data.name,
-    data.description,
-    data.source,
-    new MetadataManager(columns),
-  );
-  set.addFootprints(data.rows, columns);
-  viewer.showFootprintSet(set);
+  const set = viewer.addFootprintSet(parseJsonTable(data), {
+    name: data.name,
+    description: data.description,
+    providerUrl: data.source,
+  });
   observationSet = set;
+  observationProvenance = "HST / STC-S · local JSON fixture";
   const focus = set.footprintPolygons.find((footprint) => footprint.valid);
   if (!focus) throw new Error("No valid HST observation footprint");
   const row = focus.details as unknown as Array<string | number>;
@@ -467,6 +462,7 @@ function setLegend(
   }
 }
 function hideInteraction(): void {
+  clearHoveredMetadata();
   metadataBox.hidden = true;
   legend.hidden = true;
   demoPointer.hidden = true;
@@ -492,6 +488,16 @@ function dispatchPointer(x: number, y: number): void {
   );
 }
 let pointerPosition = { x: 55, y: 70 };
+function parkDemoPointer(): void {
+  demoPointer.hidden = true;
+  demoPointer.style.display = "none";
+  realPointerOnCanvas = false;
+  // Clear the viewer's last hit-test position, not just our metadata panel.
+  dispatchPointer(-1000, -1000);
+  lastHoveredSource = null;
+  lastHoveredFootprint = null;
+  clearHoveredMetadata();
+}
 async function animatePointer(
   target: { x: number; y: number },
   token: number,
@@ -638,7 +644,7 @@ const check = (token: number) => {
   if (token !== generation) throw new Error("Sequence cancelled");
 };
 async function wait(ms: number, token: number): Promise<void> {
-  for (let elapsed = 0; elapsed < ms;) {
+  for (let elapsed = 0; elapsed < ms; ) {
     check(token);
     if (paused) {
       await sleep(50);
@@ -761,7 +767,7 @@ async function fadeTo(key: SurveyKey, token: number): Promise<boolean> {
       surveys[key].url,
     );
     audit.warnings.push(`${key}: service unavailable (${String(error)})`);
-    await wait(4000, token);
+    await wait(900, token);
     return false;
   }
   check(token);
@@ -770,20 +776,15 @@ async function fadeTo(key: SurveyKey, token: number): Promise<boolean> {
     showOnly(key);
     return true;
   }
-  viewer.setActiveHiPS(next);
   provenanceSignature = "";
   updateProvenance();
   activeKey = key;
-  // Keep the outgoing image opaque while the incoming layer acquires tiles.
-  await wait(2500, token);
+  // Retain the previous sky while incoming tiles start to load.
+  await wait(900, token);
+  check(token);
   const old = previous ? layers.get(previous) : undefined;
-  const stack = viewer.getActiveHiPSLayers();
-  const incomingAbove = !old || stack.indexOf(next) > stack.indexOf(old);
-  for (let i = 0; i <= 25; i++) {
-    await wait(55, token);
-    viewer.setHiPSOpacity(next, incomingAbove ? i / 25 : 1);
-    if (old) viewer.setHiPSOpacity(old, incomingAbove ? 1 : 1 - i / 25);
-  }
+  await viewer.transitionToHiPS(next, { previous: old, durationMs: 1400 });
+  check(token);
   showOnly(key);
   return true;
 }
@@ -896,6 +897,7 @@ function setEquatorialGridVisible(visible: boolean): void {
     viewer.toggleEquatorialGrid();
 }
 async function reset(): Promise<void> {
+  dataExample.hidden = true;
   if (running) return;
   paused = false;
   get<HTMLElement>("ecosystem-diagram").hidden = true;
@@ -911,7 +913,7 @@ async function reset(): Promise<void> {
   viewer.setFoV(65);
   if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
   normalizeLayers();
-  coordinateHud.hidden = true;
+
   if (layers.has("optical")) showOnly("optical");
   caption(
     "Opening",
@@ -922,10 +924,10 @@ async function reset(): Promise<void> {
   status.textContent = "Ready";
   controls();
 }
-type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 const initialScene = Number(new URLSearchParams(location.search).get("scene"));
 const requestedScene: SceneNumber =
-  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 11
+  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 10
     ? (initialScene as SceneNumber)
     : 1;
 
@@ -996,32 +998,87 @@ function showMetadata(
   heading: string,
   state: string,
 ): void {
-  if (state !== "selected") return; // Hover changes the marker only; selections persist.
+  const kind = /source/i.test(heading) ? "source" : "footprint";
+  if (state === "hover") clearHoveredMetadata(kind);
   const values = details as Array<string | number>;
   const key = heading + JSON.stringify(values);
-  if (selectedMetadata.has(key)) return;
-  selectedMetadata.add(key);
+  if (state === "selected") {
+    clearHoveredMetadata(kind);
+    if (selectedMetadata.has(key)) return;
+    selectedMetadata.add(key);
+  }
   const card = document.createElement("section");
   card.className = "selected-record";
   const h = document.createElement("strong");
-  h.textContent = `${heading} · selected`;
+  const idIndex = columns.findIndex((c) =>
+    /^(match_id|iauname|observation_id)$/.test(c.name),
+  );
+  const identifier = idIndex >= 0 ? values[idIndex] : heading;
+  if (state === "hover") card.dataset.hover = kind;
+  h.textContent =
+    state === "hover"
+      ? `? ${identifier} - hovered`
+      : `${heading} ${identifier} · selected`;
   card.append(h);
   const wanted =
-    /^(match_id|ra|dec|flux|ci|observation_id|instrument.*|filter.*|ra_deg|dec_deg|exposure.*)$/i;
+    /^(match_id|ra|dec|flux|ep_flux|iauname|obs_id|target|duration|ci|observation_id|instrument.*|filter.*|ra_deg|dec_deg|exposure.*)$/i;
   for (const [i, c] of columns.entries()) {
     if (!wanted.test(c.name) || values[i] == null || values[i] === "") continue;
     const line = document.createElement("span");
     const value =
       typeof values[i] === "number" && !/id/.test(c.name)
-        ? Number(values[i])
-            .toFixed(/ra|dec/.test(c.name) ? 5 : 3)
-            .replace(/\.?0+$/, "")
+        ? Math.abs(Number(values[i])) > 0 && Math.abs(Number(values[i])) < 0.001
+          ? Number(values[i]).toExponential(3)
+          : Number(values[i])
+              .toFixed(/ra|dec/.test(c.name) ? 5 : 3)
+              .replace(/\.?0+$/, "")
         : values[i];
     line.textContent = `${c.name}: ${value}${c.unit ? " " + c.unit : ""}`;
     card.append(line);
   }
-  metadataBox.append(card);
+  if (state === "hover") metadataBox.prepend(card);
+  else metadataBox.append(card);
   metadataBox.hidden = false;
+}
+function clearHoveredMetadata(kind?: string): void {
+  const selector = kind ? `[data-hover="${kind}"]` : "[data-hover]";
+  metadataBox.querySelectorAll(selector).forEach((card) => card.remove());
+  if (!metadataBox.hasChildNodes()) metadataBox.hidden = true;
+}
+let lastHoveredSource: Source | null = null;
+let lastHoveredFootprint: Footprint | null = null;
+function updateHoveredMetadata(): void {
+  const cursorVisible = realPointerOnCanvas || !demoPointer.hidden;
+  const source =
+    cursorVisible && catalogue?.isVisible
+      ? catalogue.getPrimaryHoveredSource()
+      : null;
+  const footprint =
+    cursorVisible && observationSet?.isVisible
+      ? (observationSet.hoveredFootprints.footprints[0] ?? null)
+      : null;
+  if (source !== lastHoveredSource) {
+    clearHoveredMetadata("source");
+    if (source && catalogue)
+      showMetadata(
+        source.details,
+        catalogue.metadataManager.columns,
+        "Source",
+        "hover",
+      );
+    lastHoveredSource = source;
+  }
+  if (footprint !== lastHoveredFootprint) {
+    clearHoveredMetadata("footprint");
+    if (footprint && observationSet)
+      showMetadata(
+        footprint.details,
+        observationSet.metadataManager.columns,
+        "Observation",
+        "hover",
+      );
+    lastHoveredFootprint = footprint;
+  }
 }
 // ICRS/J2000 equatorial -> Galactic rotation (IAU Galactic system).
 function galactic(ra: number, dec: number): [number, number] {
@@ -1041,21 +1098,34 @@ function galactic(ra: number, dec: number): [number, number] {
     (Math.asin(Math.max(-1, Math.min(1, z))) * 180) / Math.PI,
   ];
 }
+let realPointerOnCanvas = false;
+canvas.addEventListener("pointermove", (event) => {
+  if (event.isTrusted) realPointerOnCanvas = true;
+});
+canvas.addEventListener("pointerleave", () => {
+  realPointerOnCanvas = false;
+});
+window.addEventListener("blur", () => {
+  realPointerOnCanvas = false;
+});
+
+// The viewer tracks real pointer events and the demo's animated pointer.
+// Read that state without dispatching synthetic events that overwrite the mouse.
 function updateCoordinates(): void {
-  if (!coordinateHud.hidden) {
-    if (demoPointer.dataset.gesture !== "grabbing")
-      dispatchPointer(pointerPosition.x, pointerPosition.y);
-    const c = viewer.getCenterCoordinates()?.astroDeg,
-      p = viewer.getCoordinatesFromMouse()?.astroDeg;
-    const describe = (label: string, q: typeof c) => {
-      if (label === "Cursor" && demoPointer.dataset.gesture === "grabbing")
-        return "Cursor · dragging (centre updates live)";
-      if (!q) return `${label}: outside sky`;
-      const [l, b] = galactic(q.ra, q.dec);
-      return `${label} · RA ${q.ra.toFixed(4)}° / Dec ${q.dec.toFixed(4)}°\nl ${l.toFixed(4)}° / b ${b.toFixed(4)}°`;
-    };
-    coordinateHud.textContent = `Equatorial J2000 / Galactic (derived)\n${describe("Centre", c)}\n${describe("Cursor", p)}\nFoV min ${viewer.getFoV().minFoV.toFixed(3)}° / max ${Math.max(viewer.getFoV().xFoV, viewer.getFoV().yFoV).toFixed(3)}°`;
-  }
+  updateHoveredMetadata();
+  const center = viewer.getCenterCoordinates()?.astroDeg;
+  const cursor = viewer.getCoordinatesFromMouse()?.astroDeg;
+  const describe = (label: string, point: typeof center) => {
+    if (!point) return `${label}: outside sky`;
+    const [l, b] = galactic(point.ra, point.dec);
+    return `${label} · RA ${point.ra.toFixed(4)}° / Dec ${point.dec.toFixed(4)}°\nl ${l.toFixed(4)}° / b ${b.toFixed(4)}°`;
+  };
+  const fov = viewer.getFoV();
+  const cursorLine =
+    cursor && (realPointerOnCanvas || !demoPointer.hidden)
+      ? `\n${describe("Cursor", cursor)}`
+      : "";
+  coordinateHud.textContent = `Equatorial J2000 / Galactic (derived)\n${describe("Centre", center)}${cursorLine}\nFoV min ${fov.minFoV.toFixed(3)}° / max ${Math.max(fov.xFoV, fov.yFoV).toFixed(3)}°`;
   requestAnimationFrame(updateCoordinates);
 }
 requestAnimationFrame(updateCoordinates);
@@ -1095,8 +1165,8 @@ function tableCatalogue(
   if (!valid.length) throw new Error("No valid table rows");
   catalogue = viewer.createCatalogue(
     label,
-    "M51 scientific sources",
-    "https://sky.esa.int/esasky-tap/tap",
+    label,
+    csvUrl,
     new MetadataManager(columns),
   );
   catalogue.addSources(valid, columns);
@@ -1128,7 +1198,7 @@ async function prepareFITS(layer: HiPS, token: number): Promise<void> {
   document.querySelector("main")!.append(preview);
   try {
     caption(
-      "09 / FITS & color mapping",
+      "07 / FITS & color mapping",
       "Load the numerical measurements",
       "The PNG preview remains visible while the FITS image resolves in the same field.",
       'viewer.changeHiPSFormat("fits"); viewer.setHiPSFITSRangeMode("robust")',
@@ -1245,7 +1315,7 @@ function renderStateStack(): void {
     remove.addEventListener("click", () =>
       queueStateAction(async () => {
         caption(
-          "08 / Scientific view state",
+          "06 / Scientific view state",
           `Delete ${record.title}`,
           "Remove this saved snapshot; the current sky remains visible.",
           `viewer.deleteState("${record.id}")`,
@@ -1268,7 +1338,7 @@ async function captureSavedView(
   token: number,
 ): Promise<void> {
   caption(
-    "08 / Scientific view state",
+    "06 / Scientific view state",
     `Save ${title}`,
     description,
     `viewer.saveState("${id}")`,
@@ -1295,7 +1365,7 @@ async function restoreSavedView(id: string): Promise<void> {
   const record = savedViews.get(id);
   if (!record) return;
   caption(
-    "08 / Scientific view state",
+    "06 / Scientific view state",
     `Restore ${record.title}`,
     `${record.description} Camera, layers and overlays return together.`,
     `await viewer.restoreState("${id}")`,
@@ -1338,14 +1408,14 @@ async function frameSavedTarget(
   token: number,
 ): Promise<void> {
   caption(
-    "08 / Scientific view state",
+    "06 / Scientific view state",
     `Widen before ${name}`,
     "Open the field for the journey to the next saved view.",
     "await viewer.flyToFoV(30, 1400)",
   );
   await viewer.flyToFoV(30, 1400);
   caption(
-    "08 / Scientific view state",
+    "06 / Scientific view state",
     `Travel to ${name}`,
     "Move the camera to the next target.",
     `viewer.flyTo(${ra}, ${dec}, 2400)`,
@@ -1353,7 +1423,7 @@ async function frameSavedTarget(
   viewer.flyTo(ra, dec, 2400);
   await wait(2600, token);
   caption(
-    "08 / Scientific view state",
+    "06 / Scientific view state",
     `Frame ${name}`,
     `Set the field of view to ${fov}° before configuring the layers.`,
     `await viewer.flyToFoV(${fov}, 1800)`,
@@ -1425,223 +1495,218 @@ async function showOpening(token: number): Promise<void> {
 }
 
 async function scene01Navigation(token: number): Promise<void> {
+  const scene = "01 / Navigation";
+
+  // Start wide: demonstrate camera constraints before approaching an object.
+  // Preserve the opening FoV (65°): no abrupt jump after the intro.
+  viewer.resetAxesOrientation();
+  resetCameraConstraints();
+
+  try {
+    caption(
+      scene,
+      "East–West rotation locked",
+      "Vertical dragging moves the sky while the East–West axis is constrained.",
+      "viewer.setEastWestRotationLocked(true)",
+    );
+
+    viewer.setEastWestRotationLocked(true);
+
+    pointerPosition = {
+      x: canvas.clientWidth * 0.4,
+      y: canvas.clientHeight * 0.42,
+    };
+
+    await demonstrateCameraDrag(0, 190, token);
+    await demonstrateCameraDrag(0, -190, token);
+
+    viewer.setEastWestRotationLocked(false);
+
+    caption(
+      scene,
+      "North–South rotation locked",
+      "Horizontal dragging demonstrates the second camera constraint.",
+      "viewer.setNorthSouthRotationLocked(true)",
+    );
+
+    viewer.setNorthSouthRotationLocked(true);
+
+    await demonstrateCameraDrag(260, 0, token);
+    await demonstrateCameraDrag(-260, 0, token);
+
+    viewer.setNorthSouthRotationLocked(false);
+
+    caption(
+      scene,
+      "Free rotation",
+      "Both axes are now free; the animated mouse shows a diagonal drag.",
+      "viewer.setEastWestRotationLocked(false); viewer.setNorthSouthRotationLocked(false)",
+    );
+
+    await demonstrateCameraDrag(230, 95, token);
+    await demonstrateCameraDrag(-230, -95, token);
+  } finally {
+    resetCameraConstraints();
+    hideInteraction();
+  }
+
+  // ------------------------------------------------------------
+  // Sesame name resolution
+  // ------------------------------------------------------------
+
+  const sesame = new SesameService({ timeoutMs: 4000 });
+
+  const sesameExample = [
+    'const target = await sesame.resolve("M45");',
+    "viewer.flyTo(target.raDeg, target.decDeg, 3000);",
+  ].join("\n");
+
   caption(
-    "01 / Navigation",
+    scene,
+    "Sesame name resolution — M45",
+    "Resolve the Pleiades by name using CDS Sesame, with Harvard as backup.",
+    sesameExample,
+  );
+
+  let m45 = { raDeg: 56.75, decDeg: 24.1167 };
+  let resolvedBy = "reference coordinates (offline fallback)";
+
+  try {
+    const target = await sesame.resolve("M45");
+
+    if (target) {
+      m45 = target;
+      resolvedBy = target.resolver ?? "Sesame";
+    }
+  } catch (error) {
+    console.warn(
+      "[A00] Sesame unavailable; using reference coordinates",
+      error,
+    );
+  }
+
+  // Show the resolved coordinates before camera navigation.
+  caption(
+    scene,
+    "Sesame — M45 resolved",
+    `RA ${m45.raDeg.toFixed(5)}° · Dec ${m45.decDeg.toFixed(5)}° · ${resolvedBy}`,
+    sesameExample,
+  );
+
+  await wait(2200, token);
+
+  // ------------------------------------------------------------
+  // Navigate to the resolved target
+  // ------------------------------------------------------------
+
+  caption(
+    scene,
     "Towards the Pleiades — M45",
-    "Travel from the panoramic view to a nearby open star cluster.",
-    "viewer.flyTo(56.75, 24.1167, 3200)",
+    `RA ${m45.raDeg.toFixed(5)}° · Dec ${m45.decDeg.toFixed(5)}° · ${resolvedBy}`,
+    sesameExample,
   );
-  viewer.flyTo(56.75, 24.1167, 3200);
-  await wait(3600, token);
+
+  viewer.flyTo(m45.raDeg, m45.decDeg, 3000);
+  await wait(3200, token);
+
+  // ------------------------------------------------------------
+  // Hierarchical HiPS resolution
+  // ------------------------------------------------------------
+
   caption(
-    "01 / Navigation",
-    "Resolve the cluster",
-    "Zoom in while preserving the arrival direction.",
-    "await viewer.flyToFoV(5, 3000)",
+    scene,
+    "Hierarchical HiPS resolution",
+    "Zoom in: higher-order HiPS tiles reveal progressively finer detail.",
+    "await viewer.flyToFoV(5, 4200)",
   );
-  await viewer.flyToFoV(5, 3000);
-  await wait(2500, token);
-  caption(
-    "01 / Navigation",
-    "Drag the sky",
-    "Press, drag right, release — then drag left. The hand follows the camera gesture.",
-    "// Canvas PointerEvent drag, using the existing camera",
-  );
-  pointerPosition = {
-    x: canvas.clientWidth * 0.35,
-    y: canvas.clientHeight * 0.42,
-  };
-  await demonstrateCameraDrag(340, 45, token);
-  await wait(650, token);
-  await demonstrateCameraDrag(-300, -35, token);
-  hideInteraction();
-  caption(
-    "01 / Navigation",
-    "The surrounding sky",
-    "Widen the field before the next journey.",
-    "await viewer.flyToFoV(30, 2600)",
-  );
-  await viewer.flyToFoV(30, 2600);
-  await wait(1600, token);
+
+  await viewer.flyToFoV(5, 4200);
+  await wait(1700, token);
 }
 
 async function scene02Spectrum(token: number): Promise<void> {
-  const scene = "02 / Across the electromagnetic spectrum";
-  type SpectrumBand = {
-    key: SurveyKey;
-    ra: number;
-    dec: number;
-    fov: number;
-    field: string;
-    note: string;
-    colormap: ColorMapName;
-  };
-
-  // Edit each band's framing and palette here. This scene uses image tiles only.
-  const spectrum: SpectrumBand[] = [
+  const scene = "02 / M42 — A multiwavelength view";
+  // The scene stays on the same physical object and at the same FoV.
+  // These three surveys provide broad coverage around M42; avoid pointed
+  // observations whose footprints may leave the field empty.
+  const bands: Array<{ key: SurveyKey; headline: string; note: string }> = [
     {
-      key: "radio",
-      ra: 83.8221,
-      dec: -5.3911,
-      fov: 60,
-      field: "Orion region",
-      colormap: "planck",
-      note: "408 MHz radio image at a wide field. Planck is the display palette, not the dataset.",
-    },
-    {
-      key: "planck",
-      ra: 83.8221,
-      dec: -5.3911,
-      fov: 20,
-      field: "Orion region",
-      colormap: "planck",
-      note: "100 GHz microwave image with the Planck colour map.",
-    },
-    {
-      key: "infrared",
-      ra: 83.8221,
-      dec: -5.3911,
-      fov: 2.5,
-      field: "M42",
-      colormap: "native",
-      note: "Herschel SPIRE 250 µm, native image. Dark borders have no coverage.",
-    },
-    {
-      key: "midinfrared",
-      ra: 83.8221,
-      dec: -5.3911,
-      fov: 2.5,
-      field: "M42",
-      colormap: "native",
-      note: "Mid infrared: AllWISE W1/W2/W4.",
+      key: "optical",
+      headline: "M42 · Visible light",
+      note: "DSS Color: optical appearance of the Orion Nebula.",
     },
     {
       key: "nearinfrared",
-      ra: 83.8221,
-      dec: -5.3911,
-      fov: 2.5,
-      field: "M42",
-      colormap: "native",
-      note: "Near infrared: 2MASS J/H/Ks.",
+      headline: "M42 · Near infrared",
+      note: "2MASS J/H/Ks: the same field observed at 1.25–2.16 µm.",
     },
     {
-      key: "optical",
-      ra: 83.8221,
-      dec: -5.3911,
-      fov: 2.5,
-      field: "M42",
-      colormap: "native",
-      note: "DSS optical coverage of Orion.",
-    },
-    {
-      key: "ultraviolet",
-      ra: 202.469575,
-      dec: 47.195258,
-      fov: 0.5,
-      field: "M51",
-      colormap: "native",
-      note: "GALEX NUV + FUV colour composite from MAST. The two bands are combined.",
-    },
-    {
-      key: "xray",
-      ra: 202.469575,
-      dec: 47.195258,
-      fov: 0.5,
-      field: "M51",
-      colormap: "native",
-      note: "Chandra pointed X-ray observations; coverage is not all-sky.",
-    },
-    {
-      key: "gamma",
-      ra: 83.8221,
-      dec: -5.3911,
-      fov: 60,
-      field: "Orion region",
-      colormap: "native",
-      note: "Fermi LAT gamma-ray image at a field appropriate to its resolution.",
+      key: "midinfrared",
+      headline: "M42 · Mid infrared",
+      note: "AllWISE W1/W2/W4: the same field observed at longer wavelengths.",
     },
   ];
 
-  // Establish compositing order for scene 04; all three stay hidden initially.
-  await ensureLayer("sdss");
-  await ensureLayer("nearinfrared");
-  await ensureLayer("midinfrared");
+  // A continuous optical background remains visible during the transfer
+  // from M45, avoiding an empty sky or a full-screen title.
+  caption(
+    scene,
+    "From M45 to M42",
+    "Widen, move to Orion, then approach M42. The optical map stays visible.",
+    "await viewer.flyToFoV(35, 1600); viewer.flyTo(83.8221, -5.3911, 2300)",
+  );
+  await viewer.flyToFoV(35, 1600);
+  viewer.flyTo(83.8221, -5.3911, 2300);
+  await wait(2500, token);
+  await viewer.flyToFoV(2.5, 1900);
+  await wait(900, token);
 
-  for (const band of spectrum) {
-    caption(
-      scene,
-      `Frame ${band.field} · FoV ${band.fov}°`,
-      "Move to the comparison field before changing the survey.",
-      `viewer.flyTo(${band.ra}, ${band.dec}, 1800);\nawait viewer.flyToFoV(${band.fov}, 1600);`,
-    );
-    viewer.flyTo(band.ra, band.dec, 1800);
-    await wait(1900, token);
-    await viewer.flyToFoV(band.fov, 1600);
+  // Load the two incoming maps while optical remains fully visible.
+  // If a provider is unavailable, keep the previous image and continue.
+  caption(
+    scene,
+    bands[0].headline,
+    bands[0].note,
+    "viewer.setActiveHiPS(optical)",
+  );
+  showOnly("optical");
+  viewer.changeColorMap("native");
+  await wait(2300, token);
 
-    const loadCommand = layerCommand(band.key);
-    caption(scene, `Load ${surveys[band.key].name}`, band.note, loadCommand);
-    let layer: HiPS;
+  for (const band of bands.slice(1)) {
     try {
-      layer = await ensureLayer(band.key);
+      await ensureLayer(band.key);
+      check(token);
+      caption(
+        scene,
+        band.headline,
+        band.note,
+        `await fadeTo("${band.key}", token)`,
+      );
+      if (await fadeTo(band.key, token)) await wait(1000, token);
     } catch (error) {
       check(token);
       audit.warnings.push(`${band.key}: ${String(error)}`);
       caption(
         scene,
-        `${surveys[band.key].name} — unavailable`,
-        "The previous map remains visible; the requested survey could not be loaded.",
-        loadCommand,
+        `${surveys[band.key].name} unavailable`,
+        "The preceding survey remains visible.",
+        surveys[band.key].url,
       );
-      await wait(4000, token);
-      continue;
+      await wait(1000, token);
     }
-    check(token);
-
-    const presentationCommand = [
-      "viewer.setActiveHiPS(layer);",
-      `viewer.changeColorMap("${band.colormap}");`,
-      "viewer.setHiPSOpacity(layer, opacity); // fade to 1",
-    ].join("\n");
-    caption(
-      scene,
-      `Transition to ${surveys[band.key].name}`,
-      band.note,
-      presentationCommand,
-    );
-    viewer.setActiveHiPS(layer);
-    viewer.changeColorMap(band.colormap);
-    await fadeTo(band.key, token);
-
-    caption(
-      scene,
-      surveys[band.key].name,
-      `${band.field} · FoV ${band.fov}°. ${band.note}`,
-      presentationCommand,
-    );
-    await wait(5500, token);
   }
 
-  const optical = await ensureLayer("optical");
+  // Scene 03 starts with optical as its base layer.
   caption(
     scene,
-    "Restore DSS Color",
-    "Native optical rendering before compositing.",
-    'viewer.setActiveHiPS(optical);\nviewer.changeColorMap("native");\nviewer.setHiPSOpacity(optical, opacity); // fade to 1',
+    "M42 · Back to optical",
+    "Return to the visible-light view before three-layer compositing.",
+    'await fadeTo("optical", token)',
   );
-  viewer.setActiveHiPS(optical);
-  viewer.changeColorMap("native");
   await fadeTo("optical", token);
-
-  caption(
-    scene,
-    "Return to M42",
-    "Keep this 2.5° optical field for the next scene.",
-    "viewer.flyTo(83.8221, -5.3911, 2000);\nawait viewer.flyToFoV(2.5, 2000);",
-  );
-  viewer.flyTo(83.8221, -5.3911, 2000);
-  await wait(2200, token);
-  await viewer.flyToFoV(2.5, 2000);
-  
+  viewer.changeColorMap("native");
+  await wait(600, token);
 }
 
 async function scene03Compositing(token: number): Promise<void> {
@@ -1712,54 +1777,12 @@ async function scene03Compositing(token: number): Promise<void> {
   );
   showOnly("optical");
   await wait(1000, token);
-  // Keep M42 in view: scene 05 continues here without a position jump.
+  // Keep M42 in view: scene 04 continues here without a position jump.
 }
 
-async function scene04Coordinates(token: number): Promise<void> {
-  coordinateHud.hidden = false;
+async function scene04Grids(token: number): Promise<void> {
   caption(
-    "04 / Sky coordinates & camera",
-    "Read the sky beneath the cursor",
-    "Equatorial RA / Dec and Galactic l / b, in degrees. The cursor and readout use the same viewer picking point.",
-    "viewer.getCenterCoordinates(); viewer.getCoordinatesFromMouse(); viewer.getFoV()",
-  );
-  for (const [x, y] of [
-    [0.42, 0.35],
-    [0.6, 0.4],
-    [0.55, 0.6],
-    [0.4, 0.5],
-  ]) {
-    await animatePointer(
-      { x: canvas.clientWidth * x, y: canvas.clientHeight * y },
-      token,
-    );
-    await wait(2000, token);
-  }
-  caption(
-    "04 / Sky coordinates & camera",
-    "Drag the camera",
-    "The centre coordinates update during the drag; the hand shows when the sky is held.",
-    "viewer.getCenterCoordinates(); viewer.getCoordinatesFromMouse(); // canvas drag",
-  );
-  await demonstrateCameraDrag(280, 45, token);
-  await wait(2000, token);
-  await demonstrateCameraDrag(-230, -25, token);
-  await wait(1600, token);
-  caption(
-    "04 / Sky coordinates & camera",
-    "A wider frame",
-    "Watch both FoV dimensions grow while the centre stays fixed.",
-    "await viewer.flyToFoV(35, 3000); viewer.getFoV(); // minFoV; max = Math.max(xFoV, yFoV)",
-  );
-  await viewer.flyToFoV(35, 3000);
-  await wait(2500, token);
-  coordinateHud.hidden = true;
-  hideInteraction();
-}
-
-async function scene05Grids(token: number): Promise<void> {
-  caption(
-    "05 / Equatorial & HEALPix grids",
+    "04 / Equatorial & HEALPix grids",
     "The Pleiades — M45",
     "A new optical field for the coordinate and tile grids.",
     "viewer.flyTo(56.75, 24.1167, 2400); await viewer.flyToFoV(120, 2000)",
@@ -1769,7 +1792,7 @@ async function scene05Grids(token: number): Promise<void> {
   await wait(2600, token);
   await viewer.flyToFoV(120, 2000);
   caption(
-    "05 / Equatorial & HEALPix grids",
+    "04 / Equatorial & HEALPix grids",
     "Equatorial geometry",
     "Right ascension and declination over the Pleiades.",
     "viewer.toggleEquatorialGrid()",
@@ -1785,24 +1808,24 @@ async function scene05Grids(token: number): Promise<void> {
   await demonstrateCameraDrag(-180, -25, token);
   hideInteraction();
   caption(
-    "05 / Equatorial & HEALPix grids",
+    "04 / Equatorial & HEALPix grids",
     "Equatorial geometry",
     "Right ascension and declination over the Pleiades.",
     "await viewer.flyToFoV(12, 2000)",
   );
-  await viewer.flyToFoV(12, 2000)
+  await viewer.flyToFoV(12, 2000);
   setEquatorialGridVisible(false);
   caption(
-    "05 / HEALPix grid",
+    "04 / HEALPix grid",
     "HEALPix sky pixelisation",
     "The hierarchical cells organise HiPS sky tiles.",
     "viewer.toggleHealpixGrid()",
   );
-  
+
   await wait(2600, token);
   setHealpixGridVisible(true);
   caption(
-    "05 / HEALPix grid",
+    "04 / HEALPix grid",
     "Resolve the Pleiades",
     "Zoom into M45 and follow the changing HEALPix tessellation.",
     "await viewer.flyToFoV(3, 2600)",
@@ -1810,7 +1833,7 @@ async function scene05Grids(token: number): Promise<void> {
   await viewer.flyToFoV(3, 2600);
   await wait(2800, token);
   caption(
-    "05 / HEALPix grid",
+    "04 / HEALPix grid",
     "The surrounding field",
     "Keep the grid visible as the field widens.",
     "await viewer.flyToFoV(12, 2600)",
@@ -1820,43 +1843,86 @@ async function scene05Grids(token: number): Promise<void> {
   setHealpixGridVisible(false);
 }
 
-async function scene06CataloguesAndFootprints(token: number): Promise<void> {
+async function scene05CataloguesAndFootprints(token: number): Promise<void> {
+  // Scene 04 ends on M45, so the M51 transfer is necessary during a full run.
+  // For a standalone scene 05 start, avoid an unnecessary reposition if already there.
   caption(
-    "06 / Catalogues",
-    "Travel to M51",
-    "Frame the Whirlpool Galaxy before loading the source catalogue.",
-    "viewer.flyTo(202.469575, 47.195258, 2600); await viewer.flyToFoV(0.5, 2600)",
+    "05 / Catalogues",
+    "From the Pleiades to M51",
+    "Widen the field, travel to the Whirlpool Galaxy, then approach the source catalogue.",
+    "await viewer.flyToFoV(35, 1800); viewer.flyTo(202.469575, 47.195258, 2600)",
   );
+  await viewer.flyToFoV(35, 1800);
+  check(token);
   viewer.flyTo(202.469575, 47.195258, 2600);
   await wait(2800, token);
   await viewer.flyToFoV(0.5, 2600);
   caption(
-    "06 / Catalogues",
+    "05 / Catalogues",
     "SDSS optical field",
     "Switch to SDSS at M51; this field has useful optical coverage.",
     `${layerCommand("sdss")}\nviewer.setActiveHiPS(layer); viewer.setHiPSOpacity(layer, 1);`,
   );
   await fadeTo("sdss", token);
   caption(
-    "06 / Catalogues",
+    "05 / Catalogues",
     "Hubble Source Catalog",
-    "Display 40 real HSC sources from the local M51 fixture.",
-    "viewer.createCatalogue(...); catalogue.addSources(rows, columns); viewer.showCatalogue(catalogue)",
+    "Services interprets the JSON metadata and produces an AstroTable; AstroViewer renders its sources.",
+    'const table = parseJsonTable(hscJson);\nviewer.addCatalogue(table, { name: "HSC sources" });',
   );
+  // Keep the real loading path in showHscCatalogue(), which calls
+  // viewer.addCatalogue(parseJsonTable(data), options).
   const hsc = await showHscCatalogue();
+  showDataExample(
+    "HSC JSON · simplified structure",
+    [
+      "{",
+      '  "mapping": { "ra": "ra", "dec": "dec", "name": "match_id" },',
+      '  "columns": [',
+      '    { "name": "ra", "unit": "deg", "numeric": true },',
+      '    { "name": "dec", "unit": "deg", "numeric": true },',
+      "    …",
+      "  ],",
+      '  "rows": [ […], … ]',
+      "}",
+    ].join("\n"),
+  );
+  await wait(1600, token);
+  caption(
+    "05 / Catalogues",
+    "Astrospatial Services",
+    "Convert the structured JSON into an AstroTable containing columns and rows.",
+    "const table = parseJsonTable(hscJson);",
+  );
+  showDataExample(
+    "Services · JSON → AstroTable",
+    'import { parseJsonTable } from "astrospatial-services";\n\nconst table = parseJsonTable(hscJson);',
+  );
+  await wait(1600, token);
+  caption(
+    "05 / Catalogues",
+    "AstroViewer",
+    "Pass the normalized AstroTable to the Viewer; the same API supports styling and interaction.",
+    'viewer.addCatalogue(table, { name: "HSC sources" });',
+  );
+  showDataExample(
+    "Viewer · AstroTable → CatalogueGL",
+    'const catalogue = viewer.addCatalogue(table, {\n  name: "HSC sources"\n});',
+  );
+  await wait(1600, token);
+  dataExample.hidden = true;
   // Demonstrate the catalogue colour API before source interactions.
-  for (const color of ["#ffb347", "#a78bfa", INTERACTION_COLOR]) {
-    caption(
-      "06 / Catalogues",
-      "Catalogue colour",
-      "Change the HSC marker colour while preserving the scientific data.",
-      "viewer.changeCatalogueColor(catalogue, color)",
-    );
-    viewer.changeCatalogueColor(hsc.catalogue, color);
-    displayColor = color;
-    setLegend("catalogue", "normal");
-    await wait(2400, token);
-  }
+  // Show a single colour change, keeping the final colour for subsequent interactions.
+  caption(
+    "05 / Catalogues",
+    "Catalogue colour",
+    "Change the HSC marker colour once; retain the result for hue, size and selection.",
+    "viewer.changeCatalogueColor(catalogue, color)",
+  );
+  viewer.changeCatalogueColor(hsc.catalogue, INTERACTION_COLOR);
+  displayColor = INTERACTION_COLOR;
+  setLegend("catalogue", "normal");
+  await wait(2400, token);
   const raIndex = hscFixture!.columns.findIndex(
     (c) => c.name === hscFixture!.mapping.ra,
   );
@@ -1869,7 +1935,7 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
   const sourceRa = mean(raIndex),
     sourceDec = mean(decIndex);
   caption(
-    "06 / Catalogues",
+    "05 / Catalogues",
     "Centre the source group",
     "Move east from M51 to the HSC sources, keeping the wide field before zooming.",
     `viewer.flyTo(${sourceRa.toFixed(6)}, ${sourceDec.toFixed(6)}, 2200)`,
@@ -1877,7 +1943,7 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
   viewer.flyTo(sourceRa, sourceDec, 2200);
   await wait(3700, token); // Complete the pan, then hold the centred group for 1.5 s.
   caption(
-    "06 / Catalogues",
+    "05 / Catalogues",
     "Resolve the source cluster",
     "The source group is now centred. Zoom in before mapping magnitude and concentration.",
     "await viewer.flyToFoV(0.12, 2200)",
@@ -1887,7 +1953,7 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
   // Scientific styling from actual HSC columns: flux is a magnitude (mag),
   // and ci is the normalized concentration index. flux_sigma is constant here.
   caption(
-    "06 / Catalogues",
+    "05 / Catalogues",
     "Photometric magnitude",
     "Map the HSC flux (magnitude, mag) column to marker brightness.",
     "viewer.setCatalogueShapeHue(catalogue, 'flux')",
@@ -1895,7 +1961,7 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
   viewer.setCatalogueShapeHue(hsc.catalogue, "flux");
   await wait(1900, token);
   caption(
-    "06 / Catalogues",
+    "05 / Catalogues",
     "Source concentration",
     "Map the HSC concentration index (ci) to marker size (8–20 px).",
     "viewer.setCatalogueShapeSize(catalogue, 'ci')",
@@ -1920,7 +1986,7 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
     let source = hscTargets[i];
     const selecting = i < 2;
     caption(
-      "06 / Catalogues",
+      "05 / Catalogues",
       selecting ? `HSC selection ${i + 1}/2` : `HSC hover ${i - 1}/2`,
       selecting
         ? "Hover the source, then preserve its selection."
@@ -1955,17 +2021,43 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
 
   setLegend("catalogue", "selected");
   await wait(1800, token);
+  // Demonstrate the CSV import path without creating another copy of HSC.
+  const csv = await (await fetch(csvUrl)).text();
+  const csvTable = parseCsvTable(csv, {
+    mapping: hscFixture!.mapping,
+    numericColumns: hscFixture!.columns
+      .filter((c) => c.numeric)
+      .map((c) => c.name),
+  });
+  if (csvTable.rows.length !== hscFixture!.rows.length) {
+    throw new Error("CSV and JSON HSC source counts differ");
+  }
   caption(
-    "06 / Catalogues",
-    "Sources and observation coverage",
-    "Keep the HSC catalogue visible beneath the HST footprints.",
-    "viewer.showCatalogue(catalogue)",
+    "05 / Catalogues & data",
+    "The same catalogue, two formats",
+    "CSV is normalized by Services into AstroTable; the already displayed HSC sources remain in place.",
+    "const table = parseCsvTable(csv, { mapping }); // AstroTable",
   );
-  viewer.showCatalogue(hsc.catalogue);
+  showDataExample(
+    "CSV · same AstroTable contract",
+    'const table = parseCsvTable(csvText, {\n  mapping: hscMapping\n});\nviewer.addCatalogue(table, { name: "HSC CSV" });',
+  );
+  await wait(1700, token);
+  dataExample.hidden = true;
+  caption(
+    "05 / Scientific overlays",
+    "From catalogue sources to observation footprints",
+    "Remove the HSC catalogue and its selection metadata before showing HST coverage.",
+    "catalogue.clearSelection(); viewer.deleteCatalogue(catalogue)",
+  );
+  hideInteraction();
+  clearCatalogue();
+  clearSelectedMetadata();
+  parkDemoPointer();
   await wait(700, token);
 
   caption(
-    "06 / Scientific overlays",
+    "05 / Scientific overlays",
     "Frame M51 observation coverage",
     "Return to the wider M51 field before adding the HST footprints.",
     "viewer.flyTo(202.469575, 47.195258, 1600); await viewer.flyToFoV(0.5, 2200)",
@@ -1975,28 +2067,33 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
   await viewer.flyToFoV(0.5, 2200);
   await wait(1200, token);
   caption(
-    "06 / Scientific overlays",
+    "05 / Scientific overlays",
     "Hubble observation coverage",
-    "Load the local HST STC-S fixture and show its observation footprints.",
+    "Show real HST footprints from local JSON. The STC-S geometry is interpreted through the shared AstroTable contract.",
     "viewer.createFootprintSet(...); footprints.addFootprints(rows, columns); viewer.showFootprintSet(footprints)",
   );
+  parkDemoPointer();
   const hst = await showHstObservations();
+  parkDemoPointer();
+  showDataExample(
+    "HST footprints · JSON → AstroTable → Viewer",
+    'const table = parseJsonTable(hstJson);\nviewer.addFootprintSet(table, {\n  name: "HST observations"\n});',
+  );
+  await wait(1700, token);
+  dataExample.hidden = true;
   // Demonstrate footprint colours independently of catalogue styling.
-  for (const color of ["#ffb347", INTERACTION_COLOR, "#a78bfa"]) {
-    caption(
-      "06 / Scientific overlays",
-      "Footprint colour",
-      "Change the HST observation outline and update the interaction legend.",
-      "viewer.changeFootprintSetColor(footprints, color)",
-    );
-    viewer.changeFootprintSetColor(hst.set, color);
-    displayColor = color;
-    setLegend("footprint", "normal");
-    await wait(2400, token);
-  }
-  demoPointer.hidden = false;
-  demoPointer.style.display = "block";
-  await wait(1600, token);
+  // One change only: keep the resulting colour during hover and selection.
+  caption(
+    "05 / Scientific overlays",
+    "Footprint colour",
+    "Change the HST outline colour once and retain it for footprint interactions.",
+    "viewer.changeFootprintSetColor(footprints, color)",
+  );
+  viewer.changeFootprintSetColor(hst.set, "#a78bfa");
+  displayColor = "#a78bfa";
+  setLegend("footprint", "normal");
+  await wait(2400, token);
+  await wait(650, token);
   const targets = spaced(
     hst.set.footprintPolygons.filter((f) => f.valid),
     (f) => footprintScreenPoint(f),
@@ -2005,7 +2102,7 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
   for (let i = 0; i < targets.length; i++) {
     let footprint = targets[i];
     caption(
-      "06 / Scientific overlays",
+      "05 / Scientific overlays",
       `HST footprint ${i + 1}/4`,
       "Move the pointer to hover; add the footprint to the persistent multi-selection.",
       "footprints.extAddPolygons2Selected(footprint)",
@@ -2038,8 +2135,9 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
 
   await wait(2300, token);
   hideInteraction();
+  parkDemoPointer();
   caption(
-    "06 / Scientific overlays",
+    "05 / Scientific overlays",
     "Restore optical sky",
     "Remove both overlays before querying the archive.",
     "viewer.deleteFootprintSet(footprints); viewer.deleteCatalogue(catalogue)",
@@ -2049,104 +2147,227 @@ async function scene06CataloguesAndFootprints(token: number): Promise<void> {
   await wait(700, token);
 }
 
-async function scene07DataAccess(token: number): Promise<void> {
+async function scene06LiveTAP(token: number): Promise<void> {
+  hideInteraction();
+  clearSelectedMetadata();
   clearCatalogue();
   clearObservations();
-  // Scene 07 and direct entry already establish M51 at FoV 0.5°.
-  const adql =
-    "SELECT TOP 40 match_id, ra, dec, flux FROM catalogues.mv_t_hubble_scv3_fdw WHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',202.469575,47.195258,0.12))";
-  caption(
-    "07 / TAP · ADQL · JSON · CSV",
-    "Ask a scientific archive",
-    "astrospatial-services submits this ADQL to ESASky TAP; results are labelled live or local fallback.",
-    `await tap.querySync({ adql, format: "votable", maxrec: 40 });\n// adql:\n${adql}`,
-  );
-  credits.textContent =
-    "Hubble Source Catalog · ESASky TAP · astrospatial-services 0.1.1";
-  await wait(3500, token);
   try {
-    const tap = new TapService({
-      endpoint: "https://sky.esa.int/esasky-tap/tap",
-      timeoutMs: 12000,
-      transport: new FetchHttpTransport((input, init) => fetch(input, init)),
-    });
-    const response = await tap.querySync({
-      adql,
-      format: "votable",
-      maxrec: 40,
-    });
-    check(token);
-    const table = parseVOTable(response.body);
-    tableCatalogue(
-      table.columns.map((c) => c.name),
-      table.columns.map((c) => c.unit),
-      table.rows,
-      "LIVE TAP · VOTable TABLEDATA",
-    );
-    audit.tap = "live";
-    caption(
-      "07 / TAP · ADQL · JSON · CSV",
-      "Live result on the sky",
-      "FIELD metadata supplies column names and units; TABLEDATA supplies the catalogue rows.",
-      "const result = parseVOTable(response.body); catalogue.addSources(result.rows, columns)",
-    );
+    await demonstrateLiveXMM(token);
   } catch (error) {
     check(token);
-    audit.tap = "local fallback";
-    audit.warnings.push(
-      `TAP fallback: ${String(error)}; cause: ${String((error as Error).cause ?? "not exposed")}`,
-    );
-    await showHscCatalogue();
-    metadataBox.textContent =
-      "LOCAL FALLBACK · HSC JSON fixture\nLive TAP unavailable, timed out, or returned an unsupported serialization.";
-    metadataBox.hidden = false;
+    audit.tap = "unavailable — no local substitution";
+    audit.warnings.push(`Data access: ${String(error)}`);
     caption(
-      "07 / TAP · ADQL · JSON · CSV",
-      "Local fallback — clearly identified",
-      "The live service could not supply a usable table. Continue with the checked-in HSC fixture.",
-      "await fetch(hscUrl); // Local JSON fallback",
+      "06 / Live TAP",
+      "XMM archive unavailable",
+      String(error),
+      "// Live query failed; no local fallback",
     );
+    await wait(1000, token);
+  } finally {
+    dataExample.hidden = true;
+    clearCatalogue();
+    clearObservations();
+    clearSelectedMetadata();
+    hideInteraction();
   }
-  await wait(5000, token);
-  clearCatalogue();
-  await showHscCatalogue();
-  caption(
-    "07 / TAP · ADQL · JSON · CSV",
-    "JSON catalogue",
-    "Load the local scientific fixture with explicit metadata and units.",
-    "const data = await (await fetch(hscUrl)).json(); catalogue.addSources(data.rows, columns)",
-  );
-  metadataBox.textContent = `LOCAL JSON · HSC fixture\n${hscFixture!.rows.length} sources`;
-  await wait(4000, token);
-  const csv = await (await fetch(csvUrl)).text();
-  check(token);
-  const parsed = parseTapCsvTable(csv);
-  tableCatalogue(
-    parsed.columns,
-    parsed.columns.map(
-      (n) => hscFixture!.columns.find((c) => c.name === n)?.unit ?? "",
-    ),
-    parsed.rows.map((row) => parsed.columns.map((n) => row[n])),
-    "LOCAL CSV · HSC fixture export",
-  );
-  caption(
-    "07 / TAP · ADQL · JSON · CSV",
-    "CSV catalogue",
-    "The same local HSC rows, parsed as CSV; units come from the companion metadata.",
-    "const table = parseTapCsvTable(await response.text()); catalogue.addSources(rows, columns)",
-  );
-  await wait(4000, token);
-  clearCatalogue();
-  metadataBox.hidden = true;
 }
 
-async function scene08SavedViews(token: number): Promise<void> {
+function formatDataExample(data: {
+  mapping?: unknown;
+  columns: unknown[];
+  rows: unknown[][];
+}): string {
+  return [
+    "{",
+    ...(data.mapping ? [`  "mapping": ${JSON.stringify(data.mapping)},`] : []),
+    '  "columns": [',
+    data.columns.map((column) => "    " + JSON.stringify(column)).join(",\n"),
+    "  ],",
+    `  "rows": ${JSON.stringify(data.rows)}`,
+    "}",
+  ].join("\n");
+}
+
+// Three independent imports: JSON catalogue, JSON footprints, then CSV catalogue.
+// TAP FIELD metadata supplies types and units; these explicit roles are renderer-specific.
+function tapViewerColumns(
+  columns: MetadataColumn[],
+  nameColumn: string,
+  footprintColumn?: string,
+): MetadataColumn[] {
+  return columns.map(
+    (column, index) =>
+      new MetadataColumn({
+        index,
+        name: column.name,
+        unit: column.unit,
+        description: column.description,
+        columnType:
+          column.name === "ra"
+            ? ColumnType.GEOM_RA
+            : column.name === "dec"
+              ? ColumnType.GEOM_DEC
+              : column.name === nameColumn
+                ? ColumnType.MAIN_NAME
+                : column.name === footprintColumn
+                  ? ColumnType.GEOM_FOOTPRINT
+                  : column.columnType === ColumnType.NUMBER
+                    ? ColumnType.NUMBER
+                    : ColumnType.STRING,
+      }),
+  );
+}
+
+async function demonstrateLiveXMM(token: number): Promise<void> {
+  const scene = "06 / Live TAP · ADQL";
+  const cone =
+    "1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',49.9507,41.5117,0.3))";
+  const sourceADQL = `SELECT TOP 60 iauname, ra, dec, ep_flux, obs_id\nFROM xsa.v_epic_source_cat\nWHERE ${cone} AND ep_flux IS NOT NULL\nORDER BY ep_flux DESC`;
+  const footprintADQL = `SELECT TOP 120 observation_id, target, ra, dec, duration, stc_s\nFROM xsa.v_public_observations\nWHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',49.9507,41.5117,2.0))
+  AND stc_s IS NOT NULL
+ORDER BY duration DESC`;
+  caption(
+    scene,
+    "Perseus cluster — XMM-Newton EPIC",
+    "A new field for a real archive query: XMM X-ray imaging, detections and observation footprints.",
+    "await viewer.flyToFoV(25, 1800); viewer.flyTo(49.9507, 41.5117, 3000); await viewer.flyToFoV(2.5, 2400); await transitionToHiPS(xmmLayer)",
+  );
+  await viewer.flyToFoV(25, 1800);
+  check(token);
+  viewer.flyTo(49.9507, 41.5117, 3000);
+  await wait(3200, token);
+  await viewer.flyToFoV(2.5, 2400);
+  check(token);
+  if (!(await fadeTo("xmm", token)))
+    throw new Error("XMM EPIC HiPS unavailable");
+  viewer.changeColorMap("native");
+  caption(
+    scene,
+    "services queries · viewer renders",
+    "astrospatial-services retrieves archive tables; AstroViewer renders their rows. The A00 transport relays XSA through /api/xmm-tap because XSA does not enable browser CORS.",
+    'import { TapService, parseVOTable } from "astrospatial-services/astronomy/tap";\nconst services = {\n  xmm: new TapService({ endpoint: "https://nxsa.esac.esa.int/tap-server/tap", transport, timeoutMs: 30000 })\n};',
+  );
+  await wait(1200, token);
+  audit.tap = "querying XSA";
+  showDataExample("ADQL · live XMM source detections", sourceADQL);
+  caption(
+    scene,
+    "4 / Send ADQL to XSA TAP",
+    "Request real XMM catalogue detections in a 0.3° cone around Perseus. votable_plain requests TABLEDATA, which the parser supports.",
+    'const response = await services.xmm.querySync({\n  adql: sourceADQL, format: "votable_plain", maxrec: 60\n});\nconst table = parseVOTable(response.body);',
+  );
+  await wait(1200, token);
+  const response = await services.xmm.querySync({
+    adql: sourceADQL,
+    format: "votable_plain",
+    maxrec: 60,
+  });
+  check(token);
+  const table = parseVOTable(response.body);
+  if (!table.rows.length)
+    throw new Error("XSA returned no source detections in this field");
+  const columns = tapViewerColumns(table.columns, "iauname");
+  showDataExample(
+    `Live response · ${table.rows.length} detections · first 2 rows`,
+    formatDataExample({
+      columns: table.columns.map((c) => ({ name: c.name, unit: c.unit })),
+      rows: table.rows.slice(0, 2),
+    }),
+  );
+  caption(
+    scene,
+    "5 / services → viewer · sources",
+    "Use FIELD metadata for names and units; explicitly map ra, dec and iauname to the viewer's coordinate and identifier roles.",
+    'const columns = tapViewerColumns(table.columns, "iauname");\nconst catalogue = viewer.createCatalogue("Live XMM detections", "Perseus", XMM_TAP_ENDPOINT, new MetadataManager(columns));\ncatalogue.addSources(table.rows, columns);\nviewer.showCatalogue(catalogue);',
+  );
+  catalogue = viewer.addCatalogue(
+    { ...table, columns },
+    {
+      name: "Live XMM detections",
+      description: "Perseus",
+      providerUrl: XMM_TAP_ENDPOINT,
+    },
+  );
+  viewer.changeCatalogueColor(catalogue, "#00d4ff");
+  audit.tap = `live XSA · ${table.rows.length} detections`;
+  await wait(1400, token);
+  showDataExample("ADQL · live XMM observation footprints", footprintADQL);
+  caption(
+    scene,
+    "6 / Query observation geometry",
+    "Retrieve distinct public XMM observations, including their original STC-S footprints. These are live archive geometries, not locally generated outlines.",
+    'const response = await services.xmm.querySync({\n  adql: footprintADQL, format: "votable_plain", maxrec: 120\n});\nconst observations = parseVOTable(response.body);',
+  );
+  await wait(1200, token);
+  const footprintResponse = await services.xmm.querySync({
+    adql: footprintADQL,
+    format: "votable_plain",
+    maxrec: 120,
+  });
+  check(token);
+  const observations = parseVOTable(footprintResponse.body);
+  if (!observations.rows.length)
+    throw new Error("XSA returned no observation footprints");
+  // Multiple archive observations can share the same pointing/geometry.
+  // Keep distinct STC-S shapes so the video does not show overlapping copies.
+  const geometryIndex = observations.columns.findIndex(
+    (column) => column.name.toLowerCase() === "stc_s",
+  );
+  if (geometryIndex < 0) throw new Error("XSA response lacks stc_s");
+  const uniqueGeometries = new Set<string>();
+  const distinctRows = observations.rows
+    .filter((row) => {
+      const geometry = String(row[geometryIndex] ?? "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!geometry || uniqueGeometries.has(geometry)) return false;
+      uniqueGeometries.add(geometry);
+      return true;
+    })
+    .slice(0, 15);
+  if (!distinctRows.length) throw new Error("No distinct XMM footprints");
+  const footprintColumns = tapViewerColumns(
+    observations.columns,
+    "observation_id",
+    "stc_s",
+  );
+  dataExample.hidden = true;
+  caption(
+    scene,
+    "7 / services → viewer · footprints",
+    "Map stc_s to GEOM_FOOTPRINT and pass the archive rows to the viewer, keeping the live source detections visible.",
+    'const columns = tapViewerColumns(observations.columns, "observation_id", "stc_s");\nconst footprints = viewer.addFootprintSet({ ...observations, rows: distinctRows, columns }, { name: "Live XMM observations" });',
+  );
+  observationProvenance = "XMM-Newton / STC-S · live XSA TAP";
+  observationSet = viewer.addFootprintSet(
+    { ...observations, rows: distinctRows, columns: footprintColumns },
+    {
+      name: "Live XMM observations",
+      description: "Perseus",
+      providerUrl: XMM_TAP_ENDPOINT,
+      visible: false,
+    },
+  );
+  if (!observationSet.footprintPolygons.some((f) => f.valid))
+    throw new Error("XMM footprints could not be rendered");
+  observationSet.clearSelection();
+  parkDemoPointer();
+  viewer.showFootprintSet(observationSet);
+  viewer.changeFootprintSetColor(observationSet, "#ffb347");
+  audit.tap = `live XSA · ${table.rows.length} detections · ${distinctRows.length} distinct observations`;
+  updateProvenance();
+  await wait(1400, token);
+}
+
+async function scene07SavedViews(token: number): Promise<void> {
   hideInteraction();
   clearSelectedMetadata();
   clearCatalogue();
   clearObservations();
   caption(
-    "08 / Scientific view state",
+    "07 / Scientific view state",
     "Build M51 · optical + infrared",
     "Keep the M51 field from the archive scene and combine SDSS with 2MASS at 30% opacity.",
     `${layerCommand("sdss")}\nviewer.setActiveHiPS(layer); viewer.setHiPSOpacity(layer, 1);\nviewer.setHiPSOpacity(nearInfrared, 0.3);`,
@@ -2156,7 +2377,7 @@ async function scene08SavedViews(token: number): Promise<void> {
   showOnly("sdss");
   viewer.setHiPSOpacity(layers.get("nearinfrared")!, 0.3);
   caption(
-    "08 / Scientific view state",
+    "07 / Scientific view state",
     "Add M51 sources and footprints",
     "Load the local HSC and HST scientific fixtures.",
     "viewer.createCatalogue(...); catalogue.addSources(rows, columns); viewer.showCatalogue(catalogue);\nviewer.createFootprintSet(...); footprints.addFootprints(rows, columns); viewer.showFootprintSet(footprints)",
@@ -2179,7 +2400,7 @@ async function scene08SavedViews(token: number): Promise<void> {
   resetOverlayAttributes();
   await frameSavedTarget(56.75, 24.1167, 5, "the Pleiades", token);
   caption(
-    "08 / Scientific view state",
+    "07 / Scientific view state",
     "M45 · optical + near infrared",
     "DSS and 2MASS cover this field; GALEX has a central coverage gap and SDSS does not cover it.",
     `${layerCommand("optical")}\nviewer.setActiveHiPS(layer); viewer.setHiPSOpacity(layer, 1);\nviewer.setHiPSOpacity(nearInfrared, 0.65);`,
@@ -2196,20 +2417,20 @@ async function scene08SavedViews(token: number): Promise<void> {
   );
   await frameSavedTarget(210.8023, 54.3489, 0.5, "M101", token);
   caption(
-    "08 / Scientific view state",
+    "07 / Scientific view state",
     "M101 · Hubble ACS",
     "Load the HST pointed-image mosaic. Its native tiles have a negative display and retain their observation boundaries.",
     `${layerCommand("hstimage")}\nviewer.setActiveHiPS(layer); viewer.changeColorMap("native"); viewer.setHiPSOpacity(layer, 1);`,
   );
   await fadeTo("hstimage", token);
   caption(
-    "08 / Scientific view state",
+    "07 / Scientific view state",
     "M101 · Hubble sources",
     "Overlay real HSC v3 sources from a local fixture retrieved from MAST at this target.",
     "viewer.createCatalogue(...); catalogue.addSources(rows, columns); viewer.showCatalogue(catalogue)",
   );
   await showM101Catalogue();
-  await wait(4500, token);
+  await wait(1200, token);
   await captureSavedView(
     "A00-M101",
     "M101",
@@ -2219,13 +2440,13 @@ async function scene08SavedViews(token: number): Promise<void> {
   stateStackInteractive = true;
   renderStateStack();
   caption(
-    "08 / Scientific view state",
+    "07 / Scientific view state",
     "Three saved views",
     "Each card restores a different scientific scene. The × button removes only the saved snapshot.",
     "viewer.getStateNames()",
   );
   viewer.getStateNames();
-  await wait(4500, token);
+  await wait(1200, token);
   for (const id of ["A00-M51", "A00-M45", "A00-M101"]) {
     await clickSavedControl(`[data-state-restore="${id}"]`, token);
     await wait(5000, token);
@@ -2238,7 +2459,7 @@ async function scene08SavedViews(token: number): Promise<void> {
     await wait(2200, token);
   }
   caption(
-    "08 / Scientific view state",
+    "07 / Scientific view state",
     "State stack cleared",
     "All three saved snapshots are removed. Continue from the current sky.",
     "viewer.getStateNames(); // A00 snapshots removed",
@@ -2251,26 +2472,32 @@ async function scene08SavedViews(token: number): Promise<void> {
   clearObservations();
 }
 
-async function scene09FITS(token: number): Promise<void> {
+async function scene08FITS(token: number): Promise<void> {
   // Herschel SPIRE 250 µm supports PNG and FITS tiles.
   // Keep the camera fixed to make the FITS processing comparison meaningful.
   const herschel = await ensureLayer("herschelfits");
   check(token);
+  // The saved-view sequence ends on a narrow HST field near M101.
+  // Restore a broad optical sky BEFORE travelling to Orion.
+  showOnly("optical");
+  viewer.changeColorMap("native");
   caption(
-    "09 / FITS & color mapping",
-    "Return to Orion",
-    "Prepare a fixed field for the image and measurement comparison.",
-    "await viewer.flyToFoV(30, 1800); viewer.flyTo(83.8221, -5.3911, 2600); await viewer.flyToFoV(2.5, 2200)",
+    "08 / FITS & color mapping",
+    "From M101 to Orion",
+    "Widen the optical field, travel to M42, then approach the Herschel field.",
+    "await viewer.flyToFoV(45, 2200); viewer.flyTo(83.8221, -5.3911, 3200); await viewer.flyToFoV(3.5, 2400)",
   );
-  await viewer.flyToFoV(30, 1800);
-  viewer.flyTo(83.8221, -5.3911, 2600);
-  await wait(2900, token);
-  await viewer.flyToFoV(2.5, 2200);
+  await viewer.flyToFoV(45, 2200);
+  check(token);
+  viewer.flyTo(83.8221, -5.3911, 3200);
+  await wait(3500, token);
+  await viewer.flyToFoV(3.5, 2400);
+  check(token);
   showOnly("herschelfits");
   viewer.changeHiPSFormat("png");
   viewer.changeColorMap("native");
   caption(
-    "09 / FITS & color mapping",
+    "08 / FITS & color mapping",
     "Herschel SPIRE 250 µm — PNG",
     "Start with the image tiles of the same far-infrared survey.",
     'viewer.setActiveHiPS(herschel); viewer.setHiPSOpacity(herschel, 1); viewer.changeHiPSFormat("png"); viewer.changeColorMap("native")',
@@ -2278,12 +2505,12 @@ async function scene09FITS(token: number): Promise<void> {
   await wait(12000, token);
   await prepareFITS(herschel, token);
   caption(
-    "09 / FITS & color mapping",
+    "08 / FITS & color mapping",
     "FITS — linear grayscale",
     "Unlike pre-rendered PNG tiles, FITS contains numerical intensity measurements. Linear stretch maps equal intensity differences to equal display steps; robust limits reduce the impact of extremes.",
     'viewer.changeColorMap("grayscale"); viewer.setHiPSFITSScaleFunction("linear"); viewer.setHiPSFITSRangeMode("robust")',
   );
-  await wait(4500, token);
+  await wait(1200, token);
   // Color maps change the display palette, not the FITS measurements.
   const colorMaps = [
     {
@@ -2305,7 +2532,7 @@ async function scene09FITS(token: number): Promise<void> {
   for (const map of colorMaps) {
     viewer.changeColorMap(map.name);
     caption(
-      "09 / FITS & color mapping",
+      "08 / FITS & color mapping",
       `Color map — ${map.name}`,
       map.description,
       `viewer.changeColorMap("${map.name}")`,
@@ -2320,7 +2547,7 @@ async function scene09FITS(token: number): Promise<void> {
   });
   viewer.changeCustomColorMap(custom);
   caption(
-    "09 / FITS & color mapping",
+    "08 / FITS & color mapping",
     "A custom palette",
     "A demo-defined amber palette maps the same measured intensities.",
     'viewer.changeCustomColorMap(createColorMapFromSamples("A00 amber", channels))',
@@ -2353,7 +2580,7 @@ async function scene09FITS(token: number): Promise<void> {
   for (const stretch of stretches) {
     viewer.setHiPSFITSScaleFunction(stretch.name);
     caption(
-      "09 / FITS & color mapping",
+      "08 / FITS & color mapping",
       `Intensity stretch — ${stretch.name}`,
       stretch.description,
       `viewer.changeColorMap("planck"); viewer.setHiPSFITSScaleFunction("${stretch.name}")`,
@@ -2376,7 +2603,7 @@ async function scene09FITS(token: number): Promise<void> {
   for (const range of ranges) {
     viewer.setHiPSFITSRangeMode(range.name);
     caption(
-      "09 / FITS & color mapping",
+      "08 / FITS & color mapping",
       range.name === "hips"
         ? "Range — HiPS global limits"
         : "Range — robust contrast",
@@ -2395,7 +2622,7 @@ async function scene09FITS(token: number): Promise<void> {
   showOnly("optical");
   viewer.changeColorMap("native");
   caption(
-    "09 / FITS & color mapping",
+    "08 / FITS & color mapping",
     "Return to DSS Color",
     "Restore the optical survey after the FITS demonstration.",
     'viewer.changeHiPSFormat("png"); viewer.setHiPSOpacity(herschel, 0); viewer.setActiveHiPS(optical); viewer.setHiPSOpacity(optical, 1); viewer.changeColorMap("native")',
@@ -2403,7 +2630,7 @@ async function scene09FITS(token: number): Promise<void> {
   await wait(1200, token);
 }
 
-async function scene10InsideSphere(token: number): Promise<void> {
+async function scene09InsideSphere(token: number): Promise<void> {
   // M51 → Galactic Centre → M33 → M81/M82 → M31; fade the maps before changing perspective.
   await ensureLayer("sdss");
   await ensureLayer("ultraviolet");
@@ -2413,24 +2640,27 @@ async function scene10InsideSphere(token: number): Promise<void> {
   setEquatorialGridVisible(false);
   viewer.resetAxesOrientation();
   caption(
-    "10 / Inside the sphere",
+    "09 / Inside the sphere",
     "M51 — widen the optical sky",
     "Frame M51 and widen the DSS field before entering the celestial sphere.",
-    "viewer.resetAxesOrientation(); viewer.flyTo(202.469575, 47.195258, 2600); await viewer.flyToFoV(120, 3200)",
+    "viewer.resetAxesOrientation(); await viewer.flyToFoV(65, 2400); viewer.flyTo(202.469575, 47.195258, 3200); await viewer.flyToFoV(120, 2400)",
   );
-  viewer.flyTo(202.469575, 47.195258, 2600);
-  await wait(2900, token);
-  await viewer.flyToFoV(120, 3200);
+  // Never fly across the sky at the narrow Herschel FITS FoV.
+  await viewer.flyToFoV(65, 2400);
+  check(token);
+  viewer.flyTo(202.469575, 47.195258, 3200);
+  await wait(3500, token);
+  await viewer.flyToFoV(120, 2400);
   caption(
-    "10 / Inside the sphere",
+    "09 / Inside the sphere",
     "Outside the celestial sphere",
     "Begin with the external view. We will enter the sphere and navigate with the equatorial grid as a spatial reference.",
-    'await fadeHiPS("optical", 1, 0, token); viewer.toggleInsideSphere(); await fadeHiPS("optical", 0, 1, token)',
+    "viewer.setHiPSOpacity(optical, 0); viewer.toggleInsideSphere(); viewer.setHiPSOpacity(optical, 1)",
   );
-  await wait(2600, token);
-  
+  await wait(900, token);
+
   await fadeHiPS("optical", 1, 0, token);
-  
+
   try {
     if (!viewer.getInsideSphere()) viewer.toggleInsideSphere();
 
@@ -2439,15 +2669,15 @@ async function scene10InsideSphere(token: number): Promise<void> {
 
     setEquatorialGridVisible(true);
     caption(
-      "10 / Inside the sphere",
+      "09 / Inside the sphere",
       "Inside — equatorial grid",
       "The camera now looks outward from within the celestial sphere. Right ascension and declination lines help reveal its surrounding geometry.",
       "viewer.toggleInsideSphere(); viewer.toggleEquatorialGrid()",
     );
-    await wait(2500, token);
+    await wait(1000, token);
 
     caption(
-      "10 / Inside the sphere",
+      "09 / Inside the sphere",
       "Towards the Galactic Centre",
       "Navigate across the interior sky towards the Milky Way's Galactic Centre, keeping the coordinate grid visible.",
       "viewer.flyTo(266.4051, -28.936175, 3200)",
@@ -2461,13 +2691,13 @@ async function scene10InsideSphere(token: number): Promise<void> {
       { name: "M81 / M82", ra: 148.93, dec: 69.37, fov: 1.2 },
       // { name: "M31", ra: 10.6847, dec: 41.269, fov: 3 },
     ];
-    
+
     for (const field of galaxies) {
       caption(
-        "10 / Inside the sphere",
+        "09 / Inside the sphere",
         `Travel to ${field.name}`,
         "Restore DSS and frame the next galaxy comparison.",
-        `await fadeTo("optical", token); viewer.flyTo(${field.ra}, ${field.dec}, 3200); await viewer.flyToFoV(${field.fov}, 2200)`,
+        `viewer.flyTo(${field.ra}, ${field.dec}, 3200); viewer.flyToFoV(${field.fov}, 2200)`,
       );
       await fadeTo("optical", token);
       viewer.flyTo(field.ra, field.dec, 3200);
@@ -2475,54 +2705,58 @@ async function scene10InsideSphere(token: number): Promise<void> {
       await viewer.flyToFoV(field.fov, 2200);
       setEquatorialGridVisible(false);
       caption(
-        "10 / Inside the sphere",
+        "09 / Inside the sphere",
         `${field.name} — DSS Color`,
         `Optical baseline · FoV ${field.fov}°`,
         'viewer.setActiveHiPS(optical); viewer.changeColorMap("native")',
       );
       viewer.setActiveHiPS(layers.get("optical")!);
       viewer.changeColorMap("native");
-      await wait(3500, token);
+      await wait(1000, token);
       caption(
-        "10 / Inside the sphere",
+        "09 / Inside the sphere",
         `${field.name} — SDSS Color`,
         "Compare the optical surveys before adding ultraviolet and infrared light.",
-        'await fadeTo("sdss", token); viewer.changeColorMap("native")',
+        'viewer.setActiveHiPS(sdss); viewer.changeColorMap("native")',
       );
       await fadeTo("sdss", token);
       viewer.changeColorMap("native");
-      await wait(3500, token);
+      await wait(1000, token);
 
       for (const key of ["ultraviolet", "midinfrared"] as const) {
         const overlay = layers.get(key)!;
         const label = key === "ultraviolet" ? "GALEX" : "AllWISE";
         viewer.setActiveHiPS(overlay);
         viewer.changeColorMap("native");
-        for (const [from, to] of [[0, 0.65], [0.65, 0.25], [0.25, 0.8]]) {
+        for (const [from, to] of [
+          [0, 0.65],
+          [0.65, 0.25],
+          [0.25, 0.8],
+        ]) {
           caption(
-            "10 / Inside the sphere",
+            "09 / Inside the sphere",
             `${field.name} — SDSS + ${label} · ${Math.round(to * 100)}%`,
             "Compare the same opacity levels across all three fields. The provenance box identifies the visible bands.",
-            `viewer.setActiveHiPS(${label.toLowerCase()}); viewer.changeColorMap("native"); await fadeHiPS("${key}", ${from}, ${to}, token, 2200, 40)`,
+            `viewer.setActiveHiPS(${label.toLowerCase()}); viewer.setHiPSOpacity(overlay, ${to})`,
           );
           await fadeHiPS(key, from, to, token, 2200, 40);
-          await wait(3000, token);
+          await wait(900, token);
         }
         caption(
-          "10 / Inside the sphere",
+          "09 / Inside the sphere",
           `${field.name} — fade out ${label}`,
           "Return to the SDSS optical baseline.",
-          `await fadeHiPS("${key}", 0.8, 0, token, 1800, 30)`,
+          `viewer.setHiPSOpacity(overlay, 0)`,
         );
         await fadeHiPS(key, 0.8, 0, token, 1800, 30);
       }
     }
 
     caption(
-      "10 / Inside the sphere",
+      "09 / Inside the sphere",
       "Fade out — leave the sphere",
       "Fade the remaining optical map to zero before returning to the external view.",
-      'await fadeHiPS("sdss", 1, 0, token, 1800, 30); viewer.toggleInsideSphere()',
+      "viewer.setHiPSOpacity(sdss, 0); viewer.toggleInsideSphere()",
     );
     await fadeHiPS("sdss", 1, 0, token, 1800, 30);
     viewer.toggleInsideSphere();
@@ -2533,10 +2767,10 @@ async function scene10InsideSphere(token: number): Promise<void> {
     activeKey = "optical";
     viewer.changeColorMap("native");
     caption(
-      "10 / Inside the sphere",
+      "09 / Inside the sphere",
       "Back outside — DSS Color",
       "Reveal DSS alone, then widen the field to show the celestial sphere.",
-      'viewer.setActiveHiPS(optical); await fadeHiPS("optical", 0, 1, token, 2200, 40); await viewer.flyToFoV(120, 4200)',
+      "viewer.setActiveHiPS(optical); viewer.setHiPSOpacity(optical, 1); viewer.flyToFoV(120, 4200)",
     );
     await fadeHiPS("optical", 0, 1, token, 2200, 40);
     await viewer.flyToFoV(120, 4200);
@@ -2570,45 +2804,52 @@ async function showSceneTitle(
   captionBox.hidden = false;
 }
 
-async function scene11Ecosystem(token: number): Promise<void> {
+async function scene10Ecosystem(token: number): Promise<void> {
   const diagram = get<HTMLElement>("ecosystem-diagram");
+  diagram.classList.remove("ecosystem-expanded");
+  diagram.innerHTML = `
+    <div class="ecosystem-stage">
+      <div class="ecosystem-demo diagram-node diagram-application">
+        <b>Demo application</b><span>Orchestrates Viewer and Services</span>
+      </div>
+      <div class="ecosystem-branches" aria-hidden="true">
+        <span></span><span></span>
+      </div>
+      <div class="ecosystem-pair">
+        <div class="ecosystem-viewer">
+          <h2>AstroViewer</h2>
+          <p class="diagram-subtitle">Rendering · camera · HiPS · catalogues · footprints</p>
+          <div class="diagram-arrow">↓ depends on</div>
+          <div class="dependency-grid">
+            <div class="diagram-node"><b>jsfitsio</b><span>FITS parsing</span></div>
+            <div class="diagram-node"><b>wcslight</b><span>WCS utilities</span></div>
+            <div class="diagram-node"><b>astrospatial-core</b><span>HEALPix · metadata</span></div>
+          </div>
+          <p class="diagram-note">wcslight also depends on jsfitsio and astrospatial-core.</p>
+        </div>
+        <div class="ecosystem-services">
+          <div class="diagram-node"><b>Astrospatial Services</b><span>Adapters · TAP · discovery</span></div>
+          <div class="diagram-arrow">↓</div>
+          <div class="diagram-node ecosystem-external"><b>External services</b><span>Sesame · HiPS nodes · TAP</span></div>
+        </div>
+      </div>
+    </div>`;
   diagram.hidden = false;
   caption(
-    "11 / Technology & data ecosystem",
+    "10 / Technology & data ecosystem",
     "The viewer and its scientific foundations",
-    "Package dependencies: FITS parsing, WCS utilities, sky geometry and metadata.",
-    "// Architecture diagram — no service request in this step",
+    "AstroViewer builds on FITS parsing, WCS utilities and shared scientific metadata.",
+    "AstroViewer · jsfitsio · wcslight · astrospatial-core",
   );
-  diagram.innerHTML = `
-      <h2>AstroViewer</h2>
-      <p class="diagram-subtitle">Rendering · camera · HiPS layers · catalogues · footprints</p>
-      <div class="diagram-arrow">↓ depends on</div>
-      <div class="dependency-grid">
-        <div class="diagram-node"><b>jsfitsio</b><span>FITS parsing</span></div>
-        <div class="diagram-node"><b>wcslight</b><span>WCS utilities</span></div>
-        <div class="diagram-node"><b>astrospatial-core</b><span>/healpix · /metadata</span></div>
-      </div>
-      <p class="diagram-note">wcslight also depends on jsfitsio and astrospatial-core.</p>`;
-  await wait(6000, token);
-
+  await wait(1800, token);
   caption(
-    "11 / Technology & data ecosystem",
-    "Retrieval and rendering work together",
-    "The demo passes service results to the viewer. Sesame and HiPS discovery are available service clients; this diagram is not a live demonstration of them.",
-    "// Coordinates → viewer.flyTo(ra, dec)\n// Survey URL → viewer.addHiPSFromUrl(url)\n// Table rows → catalogue.addSources(rows, columns)",
+    "10 / Technology & data ecosystem",
+    "From scientific services to the sky",
+    "The demo application uses AstroViewer and Astrospatial Services as separate components. Services communicates with external providers.",
+    "parseJsonTable(data) → viewer.addCatalogue(table, options)",
   );
-  diagram.innerHTML = `
-      <h2>From scientific services to the sky</h2>
-      <div class="service-flow">
-        <div class="diagram-node"><b>External services</b><span>Sesame · HiPS nodes · TAP</span></div>
-        <div class="diagram-arrow">↓</div>
-        <div class="diagram-node"><b>astrospatial-services</b><span>Retrieve and parse coordinates, survey metadata and tables</span></div>
-        <div class="diagram-arrow">↓</div>
-        <div class="diagram-node diagram-application"><b>Demo application</b><span>Pass results to AstroViewer's public API</span></div>
-        <div class="diagram-arrow">↓</div>
-        <div class="diagram-node"><b>AstroViewer</b><span>Render the scientific view · fetch HiPS image tiles</span></div>
-      </div>`;
-  await wait(6000, token);
+  diagram.classList.add("ecosystem-expanded");
+  await wait(1900, token);
 }
 
 // Playback order. Edit the corresponding scene function to change its narrative.
@@ -2620,26 +2861,25 @@ const showcaseScenes: Array<{
   { number: 1, title: "Navigation", run: scene01Navigation },
   {
     number: 2,
-    title: "Across the electromagnetic spectrum",
+    title: "M42 — A multiwavelength view",
     run: scene02Spectrum,
   },
   { number: 3, title: "Three-layer compositing", run: scene03Compositing },
-  { number: 4, title: "Sky coordinates & camera", run: scene04Coordinates },
-  { number: 5, title: "Equatorial & HEALPix grids", run: scene05Grids },
+  { number: 4, title: "Equatorial & HEALPix grids", run: scene04Grids },
   {
-    number: 6,
-    title: "Catalogues & scientific overlays",
-    run: scene06CataloguesAndFootprints,
+    number: 5,
+    title: "Catalogues & footprints (JSON / CSV)",
+    run: scene05CataloguesAndFootprints,
   },
-  { number: 7, title: "TAP · ADQL · JSON · CSV", run: scene07DataAccess },
-  { number: 8, title: "Scientific view states", run: scene08SavedViews },
-  { number: 9, title: "FITS & colour mapping", run: scene09FITS },
+  { number: 6, title: "Live XMM TAP · ADQL", run: scene06LiveTAP },
+  { number: 7, title: "Scientific view states", run: scene07SavedViews },
+  { number: 8, title: "FITS & colour mapping", run: scene08FITS },
   {
-    number: 10,
+    number: 9,
     title: "Inside the celestial sphere",
-    run: scene10InsideSphere,
+    run: scene09InsideSphere,
   },
-  { number: 11, title: "Technology & data ecosystem", run: scene11Ecosystem },
+  { number: 10, title: "Technology & data ecosystem", run: scene10Ecosystem },
 ];
 
 async function runA00(startScene: SceneNumber = 1): Promise<void> {
@@ -2668,8 +2908,8 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
     viewer.resetAxesOrientation();
     // Direct scene entry: establish the same baseline without replaying earlier scenes.
-    const atM42 = startScene >= 2 && startScene <= 5;
-    const atM51 = startScene >= 6;
+    const atM42 = startScene >= 2 && startScene <= 4;
+    const atM51 = startScene >= 5;
     viewer.goTo(
       atM42 ? 83.8221 : atM51 ? 202.469575 : 83.633083,
       atM42 ? -5.3911 : atM51 ? 47.195258 : 22.0145,
@@ -2677,11 +2917,11 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     viewer.setFoV(
       startScene === 1
         ? 65
-        : startScene <= 4
+        : startScene <= 3
           ? 2.5
-          : startScene === 5
+          : startScene === 4
             ? 60
-            : startScene <= 8
+            : startScene <= 7
               ? 0.5
               : 5,
     );
@@ -2713,7 +2953,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
       status.textContent = "A00 failed";
     }
   } finally {
-    coordinateHud.hidden = true;
+    dataExample.hidden = true;
     get<HTMLElement>("scene-intro").hidden = true;
     get<HTMLElement>("caption").hidden = false;
     running = false;

@@ -66,10 +66,12 @@
       #caption {
         position: absolute;
         left: 28px;
-        bottom: 28px;
+        bottom: 25px;
         max-width: min(570px, 65vw);
         background: #06152be8;
-        border-left: 3px solid #61b9ff;
+        border-left: 1px solid #61b9ff;
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
         padding: 17px 21px;
         z-index: 4;
       }
@@ -122,8 +124,8 @@
       }
       #interaction-legend {
         position: absolute;
-        right: 22px;
-        bottom: 28px;
+        right: 23px;
+        bottom: 180px;
         z-index: 5;
         background: #06152bef;
         border: 1px solid #ffffff40;
@@ -256,6 +258,11 @@
         overflow-wrap: anywhere;
         pointer-events: none;
       }
+      #coordinate-hud {
+        top: auto;
+        bottom: 22px;
+        z-index: 13;
+      }
       #science-credits strong {
         display: block;
         font-size: 10px;
@@ -273,6 +280,36 @@
       }
       #science-credits a:hover {
         text-decoration: underline;
+      }
+      #data-example {
+        position: absolute;
+        top: 150px;
+        left: 28px;
+        width: min(570px, 48vw);
+        max-height: 34vh;
+        overflow: auto;
+        z-index: 6;
+        padding: 12px 16px;
+        border: 1px solid #61b9ff80;
+        border-radius: 8px;
+        background: #06152bf2;
+      }
+      #data-example[hidden] {
+        display: none;
+      }
+      #data-example strong {
+        color: #92d8ff;
+        font-size: 12px;
+      }
+      #data-example pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font: 11px/1.45 monospace;
+        margin: 8px 0 0;
+      }
+      #metadata-box [data-hover] {
+        border-left: 2px solid #ffda78;
+        padding-left: 8px;
       }
       #metadata-box {
         width: 340px;
@@ -321,9 +358,12 @@
           right: 12px;
           width: 220px;
         }
-        #interaction-legend {
-          right: 12px;
+        #coordinate-hud {
           bottom: 12px;
+        }
+        #interaction-legend {
+          left: 12px;
+          top: 90px;
           min-width: 180px;
         }
         #science-credits {
@@ -420,6 +460,12 @@
       #api-command {
         max-height: 190px;
       }
+      #sw-version{
+        position: absolute;
+        bottom: 2px;
+        right: 23px;
+        font-size: 12px;
+      }
       #scene-intro {
         position: absolute;
         inset: 0;
@@ -469,6 +515,7 @@
         left: 50%;
         transform: translate(-50%, -50%);
         width: min(940px, 90%);
+        height: 400px;
         z-index: 6;
         padding: 24px;
         background: #06152bf5;
@@ -513,6 +560,52 @@
       .diagram-note {
         margin-bottom: 0;
       }
+      /* One persistent Viewer subtree: centered first, then left in the ecosystem. */
+      .ecosystem-stage { position: relative; min-height: 285px; }
+      .ecosystem-demo {
+        position: absolute; top: 0; left: 50%; width: 38%;
+        transform: translate(-50%, -12px); opacity: 0;
+        transition: opacity .65s ease .25s, transform 1s ease .15s;
+      }
+      .ecosystem-branches {
+        position: absolute; top: 64px; left: 24%; width: 52%; height: 30px;
+        border-top: 1px solid #71c6ff; opacity: 0;
+        transition: opacity .7s ease .45s;
+      }
+      .ecosystem-branches span {
+        position: absolute; top: 0; height: 25px;
+        border-left: 1px solid #71c6ff;
+      }
+      .ecosystem-branches span:first-child { left: 0; }
+      .ecosystem-branches span:last-child { right: 0; }
+      .ecosystem-pair { position: relative; min-height: 270px; }
+      .ecosystem-viewer {
+        box-sizing: border-box; width: 100%; position: absolute;
+        left: 0; top: 0; padding: 8px 12px;
+        border: 2px solid #17b5a7; border-radius: 12px;
+        transition: width 1.15s ease, top 1.15s ease, left 1.15s ease;
+      }
+      .ecosystem-services {
+        position: absolute; top: 96px; left: 54%; width: 46%;
+        box-sizing: border-box; opacity: 0;
+        transform: translateX(18px);
+        transition: opacity .7s ease .4s, transform .9s ease .3s;
+      }
+      .ecosystem-services .diagram-node { padding: 12px; }
+      .ecosystem-external { border-style: dashed; }
+      .ecosystem-expanded .ecosystem-demo { opacity: 1; transform: translate(-50%, 0); }
+      .ecosystem-expanded .ecosystem-branches { opacity: 1; }
+      .ecosystem-expanded .ecosystem-viewer { width: 51%; top: 96px; }
+      .ecosystem-expanded .ecosystem-services { opacity: 1; transform: translateX(0); }
+      #ecosystem-diagram { transition: top 1.1s ease; }
+      #ecosystem-diagram.ecosystem-expanded { top: 47%; }
+      @media (max-width: 700px) {
+        .ecosystem-demo { width: 55%; }
+        .ecosystem-branches { left: 24%; width: 52%; }
+        .ecosystem-viewer { padding: 6px; }
+        .ecosystem-services .diagram-node { padding: 6px; }
+        .ecosystem-services .diagram-node span { font-size: 10px; }
+      }
       .service-flow {
         max-width: 640px;
         margin: auto;
@@ -551,6 +644,7 @@
     </header>
     <main>
       <canvas id="astrocanvas"></canvas>
+      <div id="sw-version">astro-viewer v3.17.0</div>
       <div id="scene-intro" hidden>
         <small></small>
         <h1></h1>

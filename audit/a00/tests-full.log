@@ -1,0 +1,21 @@
+
+> astro-viewer-demos@1.0.0 test:a00
+> playwright test playwright/a00-astronomy-showcase.spec.ts --headed --workers=1
+
+
+Running 8 tests using 1 worker
+
+(node:15530) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 playwright/a00-astronomy-showcase.spec.ts:24:5 › A00 full video reaches scene 12, restores state and exits the sphere (12.6m)
+  ✓  2 playwright/a00-astronomy-showcase.spec.ts:63:7 › A00 direct scene 3 (720ms)
+  ✓  3 playwright/a00-astronomy-showcase.spec.ts:63:7 › A00 direct scene 5 (569ms)
+  ✓  4 playwright/a00-astronomy-showcase.spec.ts:63:7 › A00 direct scene 7 (38.9s)
+  ✓  5 playwright/a00-astronomy-showcase.spec.ts:63:7 › A00 direct scene 9 (54.5s)
+  ✓  6 playwright/a00-astronomy-showcase.spec.ts:63:7 › A00 direct scene 12 (7.4s)
+  ✓  7 playwright/a00-astronomy-showcase.spec.ts:87:5 › A00 TAP failure is labelled and CSV continues (18.0s)
+  ✓  8 playwright/a00-astronomy-showcase.spec.ts:97:6 › A00 interactive pause and resume (3.9s)
+
+  Slow test file: playwright/a00-astronomy-showcase.spec.ts (14.7m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  8 passed (14.7m)

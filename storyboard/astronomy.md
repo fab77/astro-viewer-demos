@@ -1,6 +1,6 @@
 # AstroViewer Astronomy Video Storyboard
 
-This document defines the video/demo catalogue for the Astronomy vertical of AstroViewer 3.12.
+This document defines the video/demo catalogue for the Astronomy vertical of AstroViewer (installed viewer 3.17.0).
 
 The goals are:
 
@@ -13,33 +13,28 @@ The goals are:
 
 ## Video Catalogue
 
-### A00 — Astronomy Overview
+### A00 — Astronomy Showcase (12 scenes)
 
-**Goal**
+**Goal:** a silent, recordable sequence using AstroViewer 3.17.0 and astrospatial-services 0.1.1. Allow several minutes for reading pauses and network refinement; this expanded storyboard supersedes the old 60–90 second target.
 
-Provide a short showcase of the main Astronomy capabilities of AstroViewer.
+| Scene | Field | Sequence |
+| --- | --- | --- |
+| 01 Opening | Wide optical sky | Introduce AstroViewer over DSS Color; preserve the camera for the first flight. |
+| 02 Navigation | M45 | Fly, zoom in, visible hand drag right/left with human timing, zoom out. |
+| 03 Spectrum | Orion 60°/20°, M42 2.5°, M51 0.5° | Increasing frequency: Haslam radio → Planck (Planck palette) → SPIRE FIR (native) → AllWISE MIR → 2MASS NIR → DSS optical → GALEX NUV+FUV composite (MAST mirror) → Chandra X-ray → Fermi gamma. Explicit field/scale changes and service-unavailable captions. Return to M42 2.5°. |
+| 04 Compositing | M42 | Preserve scene 03 final camera/FoV. Optical + 2MASS + AllWISE at distinct opacities. |
+| 05 Coordinates | M42 | Centre and moving-cursor RA/Dec; derived Galactic l/b; Visible hand drag updates centre immediately; zoom updates min/max FoV. |
+| 06 Grids | M45, DSS Color | Equatorial then HEALPix grids, 12° → 3° → 12°. |
+| 07 Overlays | M51, SDSS | 0.5° overview; 2.4 s colour holds; zoom to 0.12° before hue/size; cumulative selected metadata, direct pointer paths; back to 0.5° for purple footprints over cyan sources. |
+| 08 Data access | M51 | Preserve scene 07 camera at 0.5°; live ADQL/TAP TABLEDATA, labelled local fallback, local JSON and CSV. |
+| 09 Scientific state | M51 → M45 → M101 | Save three distinct views in a clickable thumbnail stack: M51 SDSS/2MASS + HSC/HST, M45 DSS/2MASS 65%, M101 HST ACS + real local HSC. Restore 1→2→3, delete each snapshot, continue. |
+| 10 FITS | M42, fixed 2.5° | PNG → FITS; palettes including custom; linear/sqrt/log/asinh; hips/robust ranges. |
+| 11 Inside Sphere | Continuous from M42 | Widen, enter, rotate and navigate inside, exit and reveal the sphere. |
+| 12 Ecosystem | Wide optical sky | Brief credits and demonstrated technologies. |
 
-**Target audience**
+The architecture prelude and dedicated Sesame / HiPS node / TAP demos are specified in [the updated roadmap](../ROADMAP.md); they are planned, not silently added to the current showcase.
 
-General technical/scientific audience.
-
-**Target duration**
-
-60–90 seconds.
-
-**Main topics**
-
-- astronomical sky navigation;
-- HiPS surveys;
-- grids and coordinates;
-- catalogues;
-- observation footprints;
-- hover / selection interaction;
-- scientific target framing.
-
-**Notes**
-
-This video should be produced after the detailed videos, even if it is listed first.
+Video mode autostarts. Add `&end=07` to review only the consolidated first seven scenes. `?scene=01` through `?scene=12` starts at a clean baseline and continues to the ending. For survey decisions, excluded bands and verification evidence see [A00 review notes](../audit/a00/README.md).
 
 ---
 
