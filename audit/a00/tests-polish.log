@@ -1,0 +1,13 @@
+
+> astro-viewer-demos@1.0.0 test:a00
+> playwright test playwright/a00-astronomy-showcase.spec.ts --headed --workers=1 --grep custom FITS|direct scene 12
+
+
+Running 2 tests using 1 worker
+
+(node:49922) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 playwright/a00-astronomy-showcase.spec.ts:63:7 › A00 direct scene 12 (7.6s)
+  ✓  2 playwright/a00-astronomy-showcase.spec.ts:109:5 › A00 custom FITS palette has visible structure (44.8s)
+
+  2 passed (54.7s)

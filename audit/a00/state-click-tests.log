@@ -1,0 +1,12 @@
+
+> astro-viewer-demos@1.0.0 test:a00
+> playwright test playwright/a00-astronomy-showcase.spec.ts --headed --workers=1 --grep three saved views
+
+
+Running 1 test using 1 worker
+
+(node:51675) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 playwright/a00-astronomy-showcase.spec.ts:183:5 › A00 three saved views are clickable, restore independently and are deleted (1.9m)
+
+  1 passed (1.9m)
