@@ -1,0 +1,11 @@
+--- a/.gitignore
++++ b/.gitignore
+@@ -4,5 +4,8 @@
+ test-results/
+ videos/
+ .DS_Store
++._*
+ .env
+ *.tar
++*.patch
++*.log
