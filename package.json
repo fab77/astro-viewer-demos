@@ -1,6 +1,6 @@
 {
   "name": "astro-viewer-demos",
-  "version": "1.0.1-snapshot",
+  "version": "1.0.1",
   "description": "Production-ready astronomy and Earth observation showcase demos for AstroViewer.",
   "main": "index.js",
   "scripts": {
