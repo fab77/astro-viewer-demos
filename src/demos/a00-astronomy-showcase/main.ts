@@ -747,6 +747,22 @@ function showOnly(key: SurveyKey): void {
   provenanceSignature = "";
   updateProvenance();
 }
+
+function releaseHiPSLayersExcept(keys: SurveyKey[]): void {
+  const layersToKeep = new Set<HiPS>();
+  for (const key of keys) {
+    const layer = layers.get(key);
+    if (layer) layersToKeep.add(layer);
+  }
+
+  for (const layer of new Set(layers.values())) {
+    if (layersToKeep.has(layer)) continue;
+    viewer.removeHiPS(layer);
+    for (const [key, candidate] of layers) {
+      if (candidate === layer) layers.delete(key);
+    }
+  }
+}
 function layerCommand(key: SurveyKey): string {
   const cached = layers.get(key);
   return cached
@@ -2624,6 +2640,7 @@ async function scene08FITS(token: number): Promise<void> {
 
 async function scene09InsideSphere(token: number): Promise<void> {
   // M51 → Galactic Centre → M33 → M81/M82 → M31; fade the maps before changing perspective.
+  releaseHiPSLayersExcept(["optical"]);
   await ensureLayer("sdss");
   await ensureLayer("ultraviolet");
   await ensureLayer("midinfrared");
@@ -2772,6 +2789,7 @@ async function scene09InsideSphere(token: number): Promise<void> {
     if (viewer.getInsideSphere()) viewer.toggleInsideSphere();
     viewer.resetAxesOrientation();
     showOnly("optical");
+    releaseHiPSLayersExcept(["optical"]);
   }
 }
 
