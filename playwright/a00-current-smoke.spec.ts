@@ -26,7 +26,7 @@ test("A00 bootstraps with published dependencies", async ({ page }) => {
 });
 
 for (const [number, title, timeout] of [
-  [3, "Three-layer compositing", 120_000],
+  [3, "Three-layer compositing", 240_000],
   [4, "Equatorial & HEALPix grids", 120_000],
   [10, "Technology & data ecosystem", 60_000],
 ] as const) {

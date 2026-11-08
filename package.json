@@ -1,6 +1,6 @@
 {
   "name": "astro-viewer-demos",
-  "version": "1.0.0",
+  "version": "1.0.1-snapshot",
   "description": "Production-ready astronomy and Earth observation showcase demos for AstroViewer.",
   "main": "index.js",
   "scripts": {
@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/fab77/astro-viewer-demos#readme",
   "dependencies": {
-    "astro-viewer": "^3.18.0",
+    "astro-viewer": "^3.18.1",
     "astrospatial-services": "^0.2.0"
   },
   "devDependencies": {
