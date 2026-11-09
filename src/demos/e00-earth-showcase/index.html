@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>AstroViewer E00 — Earth Observation Showcase</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #001022;
+        color: #f2f8ff;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      main,
+      #astrocanvas {
+        width: 100%;
+        height: 100%;
+      }
+
+      main {
+        position: relative;
+      }
+
+      #astrocanvas {
+        display: block;
+      }
+
+      #coords-grid-labels,
+      #healpix-grid-labels {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      #coords-grid-labels {
+        z-index: 2;
+      }
+
+      #healpix-grid-labels {
+        z-index: 3;
+      }
+
+      #loading-indicator {
+        position: absolute;
+        top: 22px;
+        right: 22px;
+        z-index: 8;
+        padding: 9px 14px;
+        border: 1px solid rgba(111, 201, 255, 0.35);
+        border-radius: 8px;
+        background: rgba(2, 19, 40, 0.9);
+        color: #a8ddff;
+        font-size: 13px;
+        pointer-events: none;
+      }
+
+      #loading-indicator[hidden] {
+        display: none;
+      }
+
+      #caption {
+        position: absolute;
+        left: 28px;
+        bottom: 28px;
+        z-index: 5;
+        width: min(590px, calc(100vw - 56px));
+        padding: 18px 22px;
+        border-left: 2px solid #4db8ff;
+        border-radius: 0 10px 10px 0;
+        background: rgba(2, 18, 42, 0.91);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(8px);
+      }
+
+      #scene {
+        margin-bottom: 8px;
+        color: #70c7ff;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      #headline {
+        margin-bottom: 7px;
+        font-size: 25px;
+        font-weight: 720;
+      }
+
+      #detail {
+        color: rgba(231, 244, 255, 0.82);
+        line-height: 1.5;
+      }
+
+      #api-command {
+        display: block;
+        margin-top: 11px;
+        color: #8bd6ff;
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      #provenance {
+        position: absolute;
+        top: 22px;
+        left: 22px;
+        z-index: 5;
+        max-width: min(620px, 60vw);
+        padding: 12px 15px;
+        border: 1px solid rgba(141, 201, 242, 0.24);
+        border-radius: 8px;
+        background: rgba(1, 13, 31, 0.82);
+        color: rgba(224, 241, 255, 0.78);
+        font-size: 11px;
+        line-height: 1.45;
+        pointer-events: none;
+      }
+
+      #provenance strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #85ceff;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      #telemetry {
+        position: absolute;
+        right: 22px;
+        bottom: 28px;
+        z-index: 5;
+        min-width: 270px;
+        padding: 13px 16px;
+        border: 1px solid rgba(117, 192, 242, 0.24);
+        border-radius: 9px;
+        background: rgba(1, 13, 31, 0.86);
+        color: rgba(224, 241, 255, 0.78);
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.55;
+        pointer-events: none;
+      }
+
+      #controls {
+        position: absolute;
+        top: 90px;
+        right: 22px;
+        z-index: 7;
+        display: flex;
+        gap: 7px;
+        padding: 10px;
+        border: 1px solid rgba(135, 198, 240, 0.25);
+        border-radius: 9px;
+        background: rgba(2, 18, 42, 0.9);
+      }
+
+      #controls[hidden] {
+        display: none;
+      }
+
+      button {
+        padding: 8px 13px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 6px;
+        background: #194b73;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #21608f;
+      }
+
+      button:disabled {
+        cursor: default;
+        opacity: 0.45;
+      }
+
+      #status {
+        position: absolute;
+        left: 50%;
+        bottom: 8px;
+        z-index: 9;
+        transform: translateX(-50%);
+        color: rgba(215, 235, 250, 0.65);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      #version {
+        position: absolute;
+        right: 12px;
+        bottom: 8px;
+        z-index: 9;
+        color: rgba(173, 209, 235, 0.48);
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      #credits {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        border: 0;
+        width: 100%;
+        height: 100%;
+        background: #001022;
+      }
+
+      #credits[hidden] {
+        display: none;
+      }
+
+      @media (max-width: 900px) {
+        #provenance {
+          max-width: calc(100vw - 44px);
+        }
+
+        #telemetry {
+          display: none;
+        }
+
+        #caption {
+          right: 22px;
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <canvas id="astrocanvas"></canvas>
+
+      <div id="coords-grid-labels"></div>
+      <div id="healpix-grid-labels"></div>
+
+      <aside id="provenance">
+        <strong>Maps &amp; provenance</strong>
+        <div id="provenance-content">
+          Earth imagery not loaded
+        </div>
+      </aside>
+
+      <aside id="caption">
+        <div id="scene">E00 / Initialising</div>
+        <div id="headline">Earth Observation Showcase</div>
+        <div id="detail">
+          Preparing AstroViewer’s Earth rendering domain.
+        </div>
+        <code id="api-command"></code>
+      </aside>
+
+      <aside id="telemetry">
+        <div id="coordinate-status">Center: —</div>
+        <div id="fov-status">FoV: —</div>
+        <div id="tile-status">Tiles: —</div>
+      </aside>
+
+      <nav id="controls" aria-label="Showcase controls">
+        <button id="run-button" type="button">Run E00</button>
+        <button id="pause-button" type="button" disabled>
+          Pause
+        </button>
+        <button id="reset-button" type="button">Reset</button>
+      </nav>
+
+      <div id="loading-indicator">Loading Earth imagery…</div>
+
+      <div id="status" aria-live="polite">
+        Initialising E00
+      </div>
+
+      <div id="version">
+        AstroViewer v%ASTRO_VIEWER_VERSION%
+      </div>
+
+      <iframe
+        id="credits"
+        title="AstroViewer Earth Observation Showcase credits"
+        src="./credits.html"
+        hidden
+      ></iframe>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

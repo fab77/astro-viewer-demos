@@ -6,7 +6,8 @@
   "scripts": {
     "demo:a00": "vite src/demos/a00-astronomy-showcase --config src/demos/a00-astronomy-showcase/vite.config.mts",
     "test:a00": "playwright test playwright/a00-current-smoke.spec.ts",
-    "build": "node scripts/build-demos.mjs"
+    "build": "node scripts/build-demos.mjs",
+    "demo:e00": "vite src/demos/e00-earth-showcase --config src/demos/e00-earth-showcase/vite.config.mts"
   },
   "repository": {
     "type": "git",
