@@ -73,6 +73,19 @@
         display: none;
       }
 
+      #map-transition {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        background: #001022;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #map-transition[hidden] {
+        display: none;
+      }
+
       #caption {
         position: absolute;
         left: 28px;
@@ -257,6 +270,7 @@
 
       <div id="coords-grid-labels"></div>
       <div id="healpix-grid-labels"></div>
+      <div id="map-transition" hidden></div>
 
       <aside id="provenance">
         <strong>Maps &amp; provenance</strong>

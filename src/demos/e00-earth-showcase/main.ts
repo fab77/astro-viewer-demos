@@ -37,6 +37,8 @@ const runButton = get<HTMLButtonElement>("run-button");
 const pauseButton = get<HTMLButtonElement>("pause-button");
 const resetButton = get<HTMLButtonElement>("reset-button");
 const credits = get<HTMLIFrameElement>("credits");
+const coordsGridLabels = get<HTMLDivElement>("coords-grid-labels");
+const mapTransition = get<HTMLDivElement>("map-transition");
 
 const query = new URLSearchParams(location.search);
 const mode = query.get("mode") === "video" ? "video" : "interactive";
@@ -45,7 +47,7 @@ controls.hidden = mode === "video";
 
 const viewer = new AstroViewer(canvas, {
   gridLabelContainers: {
-    coords: get<HTMLDivElement>("coords-grid-labels"),
+    coords: coordsGridLabels,
     healpix: get<HTMLDivElement>("healpix-grid-labels"),
   },
 });
@@ -133,6 +135,44 @@ async function waitForEarthTiles(
   loadingIndicator.hidden = true;
 }
 
+function hideEarthGrid(): void {
+  if (viewer.isLonLatGridVisible()) {
+    viewer.toggleLonLatGrid();
+  }
+
+  // AstroViewer 3.18.1 can retain labels belonging to a replaced XYZ map.
+  // Keep the showcase deterministic until the grid lifecycle is fixed in core.
+  coordsGridLabels.hidden = true;
+}
+
+async function transitionEarthMap(
+  activateMap: () => void,
+  token: number,
+  durationMs = 700,
+): Promise<void> {
+  const steps = 14;
+  mapTransition.hidden = false;
+
+  try {
+    for (let step = 1; step <= steps; step++) {
+      await wait(durationMs / steps, token);
+      mapTransition.style.opacity = `${step / steps}`;
+    }
+
+    activateMap();
+    hideEarthGrid();
+    await waitForEarthTiles(token);
+
+    for (let step = steps - 1; step >= 0; step--) {
+      await wait(durationMs / steps, token);
+      mapTransition.style.opacity = `${step / steps}`;
+    }
+  } finally {
+    mapTransition.style.opacity = "0";
+    mapTransition.hidden = true;
+  }
+}
+
 function updateTelemetry(): void {
   const center = viewer.getCenterCoordinates();
   const fov = viewer.getFoV();
@@ -199,18 +239,21 @@ function activateEsriWorldImagery(): void {
 
 async function reset(): Promise<void> {
   sequenceToken += 1;
+  const token = sequenceToken;
   running = false;
   paused = false;
 
   credits.hidden = true;
+  mapTransition.hidden = true;
+  mapTransition.style.opacity = "0";
   viewer.removeAllEarthRasterOverlays();
   viewer.setActiveDomain("earth");
-
-  if (viewer.isLonLatGridVisible()) {
-    viewer.toggleLonLatGrid();
-  }
+  activateEsriWorldImagery();
+  hideEarthGrid();
 
   viewer.resetAxesOrientation();
+  viewer.setEastWestRotationLocked(false);
+  viewer.setNorthSouthRotationLocked(false);
   viewer.setFoV(95);
   viewer.goTo(0, 18);
 
@@ -221,34 +264,51 @@ async function reset(): Promise<void> {
     'viewer.setActiveDomain("earth")',
   );
 
-  status.textContent = "E00 ready";
+  status.textContent = "Preparing E00";
   updateControls();
   updateTelemetry();
+
+  await waitForEarthTiles(token);
+  status.textContent = "E00 ready";
 }
 
 async function scene01EarthFromSpace(token: number): Promise<void> {
   audit.scenes.push(1);
-  audit.sequencePhase = "scene01-global-earth";
+  audit.sequencePhase = "scene01-earth-rotation";
 
   showCaption(
     "01 / Earth from space",
-    "A global Earth view",
-    "AstroViewer renders Earth imagery in a domain with its own camera and layer state.",
-    'viewer.setActiveDomain("earth");\nviewer.activateWMTS(esriWorldImagery)',
+    "A complete rotation of Earth",
+    "Lock north-south movement and rotate once around the planet before arriving over Rome.",
+    "viewer.setNorthSouthRotationLocked(true);\nviewer.flyTo(longitude, latitude, duration)",
   );
 
   viewer.setActiveDomain("earth");
-  await viewer.flyToFoV(88, 1800);
-  check(token);
+  viewer.goTo(12.4964, 41.9028);
+  await viewer.flyToFoV(78, 1800);
+  await waitForEarthTiles(token);
 
-  viewer.flyTo(-18, 18, 2600);
-  await wait(2900, token);
+  viewer.setEastWestRotationLocked(false);
+  viewer.setNorthSouthRotationLocked(true);
 
-  viewer.flyTo(20, 12, 2600);
-  await wait(2900, token);
+  try {
+    const rotationWaypoints = [
+      102.4964,
+      -167.5036,
+      -77.5036,
+      12.4964,
+    ];
+
+    for (const longitude of rotationWaypoints) {
+      viewer.flyTo(longitude, 41.9028, 2200);
+      await wait(2400, token);
+    }
+  } finally {
+    viewer.setNorthSouthRotationLocked(false);
+  }
 
   await waitForEarthTiles(token);
-  await wait(1100, token);
+  await wait(1200, token);
 }
 
 async function scene02GeographicNavigation(
@@ -260,38 +320,104 @@ async function scene02GeographicNavigation(
   showCaption(
     "02 / Geographic navigation",
     "Rome",
-    "Move directly to a known longitude and latitude.",
-    "viewer.goTo(12.4964, 41.9028)",
+    "Begin the geographic tour from a precise longitude and latitude.",
+    "await viewer.flyToFoV(32, 1800)",
   );
 
-  viewer.goTo(12.4964, 41.9028);
-  await viewer.flyToFoV(28, 1800);
+  await viewer.flyToFoV(32, 1800);
   await waitForEarthTiles(token);
   await wait(1300, token);
 
+  const destinations = [
+    { name: "Madrid", longitude: -3.7038, latitude: 40.4168 },
+    { name: "Cape Town", longitude: 18.4241, latitude: -33.9249 },
+    { name: "New York", longitude: -74.006, latitude: 40.7128 },
+    { name: "São Paulo", longitude: -46.6333, latitude: -23.5505 },
+    { name: "Beijing, China", longitude: 116.4074, latitude: 39.9042 },
+    { name: "Tehran, Iran", longitude: 51.389, latitude: 35.6892 },
+    { name: "Rome", longitude: 12.4964, latitude: 41.9028 },
+  ];
+
+  for (const destination of destinations) {
+    showCaption(
+      "02 / Geographic navigation",
+      destination.name,
+      "Fly smoothly between geographic targets while fallback tiles preserve global coverage.",
+      `viewer.flyTo(${destination.longitude}, ${destination.latitude}, 2800)`,
+    );
+
+    viewer.flyTo(destination.longitude, destination.latitude, 2800);
+    await wait(3000, token);
+    await waitForEarthTiles(token);
+    await wait(900, token);
+  }
+}
+
+async function scene03OpenXYZMaps(token: number): Promise<void> {
+  audit.scenes.push(3);
+  audit.sequencePhase = "scene03-open-xyz-maps";
+
   showCaption(
-    "02 / Geographic navigation",
-    "Madrid",
-    "Fly smoothly between geographic targets while fallback tiles preserve coverage.",
-    "viewer.flyTo(-3.7038, 40.4168, 2600)",
+    "03 / Open XYZ maps",
+    "OpenStreetMap",
+    "Switch to an open cartographic source using a standard XYZ URL template.",
+    'viewer.activateXYZ2({\n  urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"\n})',
   );
 
-  viewer.flyTo(-3.7038, 40.4168, 2600);
-  await wait(2900, token);
-  await waitForEarthTiles(token);
-  await wait(1200, token);
+  await transitionEarthMap(() => {
+    loadingIndicator.hidden = false;
+    viewer.activateXYZ2({
+      name: "OpenStreetMap",
+      urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      minZoom: 0,
+      maxZoom: 19,
+      segmentsPerSide: 48,
+      maxCachedTiles: 384,
+      attribution: "© OpenStreetMap contributors",
+    });
+
+    provenance.textContent =
+      "© OpenStreetMap contributors · XYZ raster tiles · " +
+      "rendered with AstroViewer WebGL2";
+  }, token);
+
+  await wait(1800, token);
 
   showCaption(
-    "02 / Geographic navigation",
-    "Cape Town",
-    "Longitude and latitude remain the common reference across the Earth domain.",
-    "viewer.flyTo(18.4241, -33.9249, 2800)",
+    "03 / Open XYZ maps",
+    "OpenTopoMap",
+    "The same Earth renderer can exchange providers while preserving geographic navigation.",
+    'viewer.activateXYZ2({\n  urlTemplate: "https://a.tile.opentopomap.org/{z}/{x}/{y}.png"\n})',
   );
 
-  viewer.flyTo(18.4241, -33.9249, 2800);
-  await wait(3100, token);
-  await waitForEarthTiles(token);
-  await wait(1300, token);
+  await transitionEarthMap(() => {
+    loadingIndicator.hidden = false;
+    viewer.activateXYZ2({
+      name: "OpenTopoMap",
+      urlTemplate: "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+      minZoom: 0,
+      maxZoom: 17,
+      segmentsPerSide: 48,
+      maxCachedTiles: 384,
+      attribution: "© OpenTopoMap contributors",
+    });
+
+    provenance.textContent =
+      "© OpenTopoMap contributors · XYZ raster tiles · " +
+      "rendered with AstroViewer WebGL2";
+  }, token);
+
+  await wait(2000, token);
+
+  showCaption(
+    "03 / Open XYZ maps",
+    "Return to global imagery",
+    "Restore Esri World Imagery before introducing scientific Earth imagery.",
+    "viewer.activateWMTS(esriWorldImagery)",
+  );
+
+  await transitionEarthMap(activateEsriWorldImagery, token);
+  await wait(1500, token);
 }
 
 async function runE00(): Promise<void> {
@@ -312,10 +438,11 @@ async function runE00(): Promise<void> {
     await resetForRun(token);
     await scene01EarthFromSpace(token);
     await scene02GeographicNavigation(token);
+    await scene03OpenXYZMaps(token);
 
     check(token);
     audit.sequencePhase = "complete";
-    status.textContent = "E00 review complete · 01–02";
+    status.textContent = "E00 review complete · 01–03";
   } catch (error) {
     if (token === sequenceToken) {
       console.error("E00 sequence failed", error);
@@ -335,12 +462,12 @@ async function resetForRun(token: number): Promise<void> {
   credits.hidden = true;
   viewer.removeAllEarthRasterOverlays();
   viewer.setActiveDomain("earth");
-
-  if (viewer.isLonLatGridVisible()) {
-    viewer.toggleLonLatGrid();
-  }
+  activateEsriWorldImagery();
+  hideEarthGrid();
 
   viewer.resetAxesOrientation();
+  viewer.setEastWestRotationLocked(false);
+  viewer.setNorthSouthRotationLocked(false);
   viewer.setFoV(95);
   viewer.goTo(0, 18);
 
@@ -378,9 +505,6 @@ Object.assign(window.astroViewerDemo, {
 void (async () => {
   try {
     audit.sequencePhase = "initialising-earth";
-    activateEsriWorldImagery();
-    await waitForEarthTiles(sequenceToken);
-
     await reset();
 
     window.astroViewerDemo!.ready = true;
