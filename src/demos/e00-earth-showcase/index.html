@@ -86,6 +86,55 @@
         display: none;
       }
 
+      #scene-intro {
+        position: absolute;
+        inset: 0;
+        z-index: 12;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        background: rgba(0, 10, 25, 0.62);
+        text-align: center;
+        opacity: 1;
+        transition: opacity 350ms;
+        pointer-events: none;
+      }
+
+      #scene-intro[hidden],
+      #caption[hidden] {
+        display: none;
+      }
+
+      #scene-intro.leaving {
+        opacity: 0;
+      }
+
+      #scene-intro.opening {
+        background: transparent;
+      }
+
+      #scene-intro small {
+        color: #8bd6ff;
+        font-size: 14px;
+        letter-spacing: 0.3em;
+      }
+
+      #scene-intro h1 {
+        max-width: 1000px;
+        margin: 16px 0;
+        font-size: clamp(28px, 4vw, 56px);
+        text-shadow: 0 2px 15px #000;
+      }
+
+      #scene-intro p {
+        margin: 0;
+        color: #c5e7ff;
+        font-size: clamp(18px, 2vw, 28px);
+        text-shadow: 0 2px 15px #000;
+      }
+
       #caption {
         position: absolute;
         left: 28px;
@@ -98,6 +147,227 @@
         background: rgba(2, 18, 42, 0.91);
         box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
         backdrop-filter: blur(8px);
+      }
+
+      #caption.satellite-scene {
+        top: 84px;
+        right: 28px;
+        bottom: auto;
+        left: auto;
+        width: min(520px, calc(100vw - 56px));
+      }
+
+      #satellite-legend,
+      #maritime-legend {
+        position: absolute;
+        left: 28px;
+        bottom: 28px;
+        z-index: 6;
+        width: min(420px, calc(100vw - 56px));
+        padding: 14px 18px;
+        border: 1px solid rgba(111, 201, 255, 0.3);
+        border-radius: 9px;
+        background: rgba(2, 18, 42, 0.91);
+        color: rgba(231, 244, 255, 0.86);
+        font-size: 12px;
+        line-height: 1.6;
+        pointer-events: none;
+      }
+
+      #satellite-legend[hidden],
+      #maritime-legend[hidden],
+      #observation-metadata[hidden],
+      #layer-stack[hidden],
+      #saved-contexts[hidden],
+      #demo-pointer[hidden] {
+        display: none;
+      }
+
+      #layer-stack,
+      #saved-contexts {
+        position: absolute;
+        left: 28px;
+        top: 96px;
+        z-index: 7;
+        width: 330px;
+        padding: 15px;
+        border: 1px solid rgba(111, 201, 255, 0.3);
+        border-radius: 10px;
+        background: rgba(2, 18, 42, 0.94);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+      }
+
+      #layer-stack h3,
+      #saved-contexts h3 {
+        margin: 0 0 11px;
+        color: #70c7ff;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .layer-row,
+      .context-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 7px 12px;
+        align-items: center;
+        padding: 9px 10px;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.045);
+        color: rgba(231, 244, 255, 0.88);
+        font-size: 12px;
+      }
+
+      .context-row {
+        grid-template-columns: 70px 1fr 28px;
+        padding: 8px;
+        overflow: hidden;
+      }
+
+      .context-row img {
+        width: 70px;
+        height: 54px;
+        object-fit: cover;
+        border-radius: 4px;
+      }
+
+      .context-row b,
+      .context-row small {
+        display: block;
+      }
+
+      .context-row small {
+        margin-top: 4px;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .context-delete {
+        align-self: stretch;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        background: transparent;
+        color: #d8edff;
+        font-size: 20px;
+      }
+
+      .layer-row + .layer-row,
+      .context-row + .context-row {
+        margin-top: 7px;
+      }
+
+      .layer-row small,
+      .context-row small {
+        color: #8bd6ff;
+      }
+
+      .layer-row input {
+        grid-column: 1 / -1;
+        width: 100%;
+        accent-color: #4db8ff;
+      }
+
+      .context-row[data-active="true"] {
+        outline: 1px solid #4db8ff;
+        background: rgba(77, 184, 255, 0.13);
+      }
+
+      #observation-metadata {
+        position: absolute;
+        right: 28px;
+        bottom: 110px;
+        z-index: 7;
+        width: min(430px, calc(100vw - 56px));
+        padding: 14px;
+        border: 1px solid rgba(0, 255, 242, 0.32);
+        border-radius: 9px;
+        background: rgba(2, 18, 42, 0.94);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+        pointer-events: none;
+      }
+
+      .observation-record {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 14px;
+        padding: 10px 12px;
+        border-left: 2px solid #00fff2;
+        background: rgba(0, 255, 242, 0.06);
+        color: rgba(231, 244, 255, 0.82);
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .observation-record + .observation-record {
+        margin-top: 8px;
+      }
+
+      .observation-record strong {
+        grid-column: 1 / -1;
+        color: #74fff7;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        font-size: 13px;
+      }
+
+      .observation-record[data-state="hover"] strong::before {
+        content: "HOVER · ";
+        color: #ffffff;
+      }
+
+      .observation-record[data-state="selected"] strong::before {
+        content: "SELECTED · ";
+        color: #ffffff;
+      }
+
+      .legend-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .legend-swatch {
+        flex: 0 0 auto;
+        width: 20px;
+        height: 3px;
+        border-radius: 2px;
+      }
+
+      .legend-swatch.regions { background: #ff4d4d; }
+      .legend-swatch.track { background: #ffe066; }
+      .legend-swatch.footprints { background: #00fff2; }
+      .legend-swatch.satellite { background: #a6adb5; }
+      .legend-swatch.all-year { background: #ff2d95; }
+      .legend-swatch.seasonal { background: #7cff00; }
+      .legend-swatch.selected {
+        height: 10px;
+        border: 1px solid #ffffff;
+        background: rgba(255, 255, 255, 0.45);
+      }
+
+      #demo-pointer {
+        position: fixed;
+        display: block;
+        z-index: 2147483647;
+        width: 23px;
+        height: 28px;
+        overflow: visible;
+        filter: drop-shadow(1px 2px 2px #000);
+        transform: translate(-3px, -2px);
+        pointer-events: none;
+      }
+
+      #demo-pointer svg {
+        display: block;
+        width: 23px;
+        height: 28px;
+        overflow: visible;
       }
 
       #scene {
@@ -271,6 +541,48 @@
       <div id="coords-grid-labels"></div>
       <div id="healpix-grid-labels"></div>
       <div id="map-transition" hidden></div>
+      <div id="scene-intro" hidden>
+        <small></small>
+        <h1></h1>
+        <p hidden></p>
+      </div>
+
+      <aside id="satellite-legend" hidden>
+        <div class="legend-row"><span class="legend-swatch regions"></span>Spanish administrative regions</div>
+        <div class="legend-row"><span class="legend-swatch track"></span>Satellite ground-track projection</div>
+        <div class="legend-row"><span class="legend-swatch footprints"></span>Images acquired by the satellite</div>
+        <div class="legend-row"><span class="legend-swatch satellite"></span>Satellite, sensor rays and current image footprint</div>
+        <div class="legend-row"><span class="legend-swatch selected"></span>Regions intersecting the current image footprint</div>
+      </aside>
+
+      <aside id="maritime-legend" hidden>
+        <div class="legend-row"><span class="legend-swatch all-year"></span>All-year ferry service</div>
+        <div class="legend-row"><span class="legend-swatch seasonal"></span>Seasonal ferry service</div>
+      </aside>
+
+      <aside id="observation-metadata" hidden aria-live="polite"></aside>
+
+      <aside id="layer-stack" hidden>
+        <h3>Earth raster stack</h3>
+        <div id="layer-stack-rows"></div>
+      </aside>
+
+      <aside id="saved-contexts" hidden>
+        <h3>Saved Earth contexts</h3>
+        <div id="saved-context-rows"></div>
+      </aside>
+
+      <div id="demo-pointer" hidden aria-hidden="true">
+        <svg viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M3 2V28L10 21L15 32L20 29L15 19H25Z"
+            fill="white"
+            stroke="#071629"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
 
       <aside id="provenance">
         <strong>Maps &amp; provenance</strong>

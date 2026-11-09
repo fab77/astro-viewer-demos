@@ -62,9 +62,9 @@ Demonstrate coordinate-based navigation on the globe.
 
 **Visual sequence**
 
-- Navigate to Rome with an immediate `goTo`.
-- Fly to Madrid.
-- Fly to another recognisable geographic target.
+- Resolve each city name through the Nominatim service.
+- Use the resolved longitude and latitude for each flight.
+- Fall back to the fixture coordinates if the runtime resolver is unavailable.
 - Display current longitude, latitude and field of view.
 
 **Capabilities**
@@ -94,8 +94,9 @@ Show interchangeable slippy-map sources.
 
 - Begin with Esri World Imagery.
 - Switch to OpenStreetMap.
+- Fly to Central Park and zoom deeply to an urban street-and-path scale.
 - Switch to OpenTopoMap.
-- Return to the preferred visual base map.
+- Zoom out over New York before flying back to Rome and restoring the preferred visual base map.
 
 **Capabilities**
 
@@ -119,18 +120,17 @@ Show interchangeable slippy-map sources.
 
 ---
 
-### Scene 04 — Scientific WMTS imagery
+### Scene 04 — Standards-based global imagery
 
 **Purpose**
 
-Demonstrate standards-based scientific raster imagery.
+Demonstrate standards-based global imagery from an independent WMTS provider.
 
 **Visual sequence**
 
-- Load NASA GIBS Blue Marble.
-- Show the active WMTS metadata.
-- Compare the scientific layer with the cartographic base map.
-- Demonstrate a time or dimension parameter only if the selected layer supports it reliably.
+- Load NASA GIBS Blue Marble Shaded Relief and Bathymetry.
+- Show the active WMTS provider and product metadata.
+- Return to Esri World Imagery to demonstrate interchangeable WMTS providers.
 
 **Capabilities**
 
@@ -138,8 +138,12 @@ Demonstrate standards-based scientific raster imagery.
 - WMTS KVP configuration
 - layer, style and format selection
 - TileMatrixSet selection
-- dimensions and time
 - metadata presentation
+
+This scene demonstrates WMTS interoperability and product provenance. It does
+not present Blue Marble as a dated scientific observation. A scientific raster
+scene must identify an observed variable, sensor, acquisition date and units or
+documented product meaning.
 
 **Current limitation**
 
@@ -155,12 +159,11 @@ Show independent raster overlays over an Earth base map.
 
 **Visual sequence**
 
-- Load one stable base map.
-- Add a second XYZ or WMTS raster layer.
-- Fade the overlay from transparent to partially opaque.
-- Toggle visibility.
-- Restore the overlay.
-- Remove it cleanly.
+- Keep Esri World Imagery as the stable base map.
+- Add NASA WMTS and OpenStreetMap XYZ overlays.
+- Represent all three layers in a simulated stack panel.
+- Animate two sliders while applying their values to the real overlay opacity APIs.
+- Rebalance the composition, then remove both overlays cleanly.
 
 **Capabilities**
 
@@ -178,7 +181,7 @@ Show independent raster overlays over an Earth base map.
 
 ---
 
-### Scene 06 — GeoJSON points
+### Scene 06 — World capitals and runtime context
 
 **Purpose**
 
@@ -186,55 +189,114 @@ Demonstrate point-based geographic data.
 
 **Visual sequence**
 
-- Load the Italy cities fixture.
-- Frame the imported points.
-- Hover one or more points.
-- Select a point and show its metadata.
+- Load a synthetic world-capitals table and frame the complete globe.
+- Hover and select Brasília, Nairobi and Tokyo.
+- Resolve each place with Nominatim.
+- Query Open-Meteo and Wikipedia at runtime.
+- Preserve selected metadata cards with explicit source indicators.
+- Return to Europe before loading regional geometries.
 
 **Capabilities**
 
-- GeoJSON `Point`
-- GeoJSON `MultiPoint`
+- AstroTable geographic points
 - point rendering
 - hover and selection
-- metadata presentation
+- runtime place resolution and metadata enrichment with failure fallback
 
 **Fixture**
 
-- ten representative Italian cities
+- fifteen representative world capitals
 
 ---
 
-### Scene 07 — Regions and routes
+### Scene 07 — European wildfire clusters
 
 **Purpose**
 
-Demonstrate polygon and line geometries.
+Demonstrate data-driven styling across two related point catalogues.
+
+**Visual sequence**
+
+- Load an illustrative European summer 2026 fire-cluster fixture.
+- Map intensity to marker size and hue.
+- Overlay black markers for the highest illustrative criticality class.
+- Remove both catalogues before continuing.
+
+**Capabilities**
+
+- numeric AstroTable columns
+- data-driven marker size
+- data-driven marker hue
+- independent catalogue layers and lifecycle
+
+**Data constraint**
+
+The fixture is synthetic and exists to demonstrate visual encoding. It must not
+be presented as an observed EFFIS, Copernicus or satellite fire archive.
+
+---
+
+### Scene 08 — Administrative regions
+
+**Purpose**
+
+Demonstrate independent polygon layers and feature interaction.
 
 **Visual sequence**
 
 - Load Italian administrative regions.
-- Change polygon colour and visibility.
+- Hover and select Puglia, showing its source and demonstration metadata.
 - Load Spanish regions.
-- Add the Italy routes fixture.
-- Compare interactive polygons with display-only routes.
+- Hover and select the Balearic Islands independently.
+- Remove both footprint layers before the next scene.
 
 **Capabilities**
 
 - GeoJSON `Polygon`
 - GeoJSON `MultiPolygon`
+- independent vector-layer lifecycle
+- colour, hover and selection controls
+
+---
+
+### Scene 09 — Mediterranean ferry routes
+
+**Purpose**
+
+Demonstrate real published line geometries over a labelled cartographic base.
+
+**Visual sequence**
+
+- Switch to OpenStreetMap so city and port names remain visible behind the
+  maritime routes.
+- Load eighty real ferry-route geometries published by the European Atlas of
+  the Seas and distributed by the European Environment Agency.
+- Distinguish all-year and seasonal services with a high-contrast visible
+  legend: magenta for all-year routes and lime for seasonal routes.
+- Preserve the published geometry so routes follow their actual maritime path.
+- Frame the routes around longitude 33.8828°, latitude 34.6906° with a 44.125°
+  vertical field of view.
+- Approach the connected ferry hub at Piraeus and pause at street-map scale.
+- Widen the view and move slowly west across the route network to Sicily.
+- Restore Esri World Imagery before continuing to the next scene.
+
+**Capabilities**
+
 - GeoJSON `LineString`
 - GeoJSON `MultiLineString`
-- mixed overlay management
+- independent vector-layer lifecycle
 - colour and visibility controls
 
 **Current limitation**
 
-Lines are display-only in the current implementation and do not expose the same hover/selection interaction as points and polygons.
+Lines are display-only in the current implementation and do not expose the same
+hover/selection interaction as points and polygons. The ferry lines are real
+published route geometries, but they are not AIS vessel tracks or navigational
+instructions.
 
 ---
 
-### Scene 08 — Geographic coordinate grid
+### Scene 10 — Geographic coordinate grid
 
 **Purpose**
 
@@ -260,7 +322,29 @@ Earth grid state must never modify Astronomy equatorial or HEALPix grid state.
 
 ---
 
-### Scene 09 — Satellite observation
+### Scene 11 — Saved Earth contexts
+
+**Purpose**
+
+Demonstrate complete named Earth view-state lifecycle.
+
+**Visual sequence**
+
+- Save a Rome analysis context containing camera, FoV, grid, base map and raster overlay.
+- Save a Madrid cartographic context with a different base map and no grid.
+- Restore Rome from the named snapshot.
+- Remove both saved contexts while leaving the restored view active.
+
+**Capabilities**
+
+- `saveState`
+- `restoreState`
+- `deleteState`
+- Earth camera, raster, overlay and grid state restoration
+
+---
+
+### Scene 12 — Satellite observation
 
 **Purpose**
 
@@ -293,7 +377,7 @@ Present a complete Earth observation geometry.
 
 ---
 
-### Scene 10 — Observation timeline
+### Scene 13 — Observation timeline
 
 **Purpose**
 
@@ -327,7 +411,7 @@ Demonstrate time-dependent interpolation.
 
 ---
 
-### Scene 11 — Standards and ecosystem
+### Scene 14 — Provenance and credits
 
 **Purpose**
 
@@ -337,6 +421,7 @@ Close the showcase by summarising the interoperable Earth stack.
 
 - Return to a clean global Earth view.
 - Present a restrained final composition.
+- Fade the Earth base map to zero opacity against the black WebGL background.
 - Transition to the Earth credits page.
 - Fade to black.
 
@@ -377,9 +462,10 @@ Expected categories:
 
 ### Geographic data
 
-- GeoJSON fixture provenance
-- administrative boundary provenance
-- satellite and orbit-data provenance
+- synthetic GeoJSON demonstration fixtures
+- synthetic administrative-boundary, wildfire and observation-track data
+- European Atlas of the Seas ferry routes — © EuroGeographics 2022
+- Weather data by Open-Meteo.com (CC BY 4.0)
 
 ### Standards and technologies
 

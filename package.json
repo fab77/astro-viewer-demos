@@ -6,6 +6,7 @@
   "scripts": {
     "demo:a00": "vite src/demos/a00-astronomy-showcase --config src/demos/a00-astronomy-showcase/vite.config.mts",
     "test:a00": "playwright test playwright/a00-current-smoke.spec.ts",
+    "test:e00": "playwright test playwright/e00-current-smoke.spec.ts",
     "build": "node scripts/build-demos.mjs",
     "demo:e00": "vite src/demos/e00-earth-showcase --config src/demos/e00-earth-showcase/vite.config.mts"
   },
@@ -21,8 +22,8 @@
   },
   "homepage": "https://github.com/fab77/astro-viewer-demos#readme",
   "dependencies": {
-    "astro-viewer": "^3.18.1",
-    "astrospatial-services": "^0.2.0"
+    "astro-viewer": "^3.19.0",
+    "astrospatial-services": "^0.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
