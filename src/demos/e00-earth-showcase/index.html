@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>AstroViewer E00 — Earth Observation Showcase</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #001022;
+        color: #f2f8ff;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      main,
+      #astrocanvas {
+        width: 100%;
+        height: 100%;
+      }
+
+      main {
+        position: relative;
+      }
+
+      #astrocanvas {
+        display: block;
+      }
+
+      #coords-grid-labels,
+      #healpix-grid-labels {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      #coords-grid-labels {
+        z-index: 2;
+      }
+
+      #healpix-grid-labels {
+        z-index: 3;
+      }
+
+      #loading-indicator {
+        position: absolute;
+        top: 22px;
+        right: 22px;
+        z-index: 8;
+        padding: 9px 14px;
+        border: 1px solid rgba(111, 201, 255, 0.35);
+        border-radius: 8px;
+        background: rgba(2, 19, 40, 0.9);
+        color: #a8ddff;
+        font-size: 13px;
+        pointer-events: none;
+      }
+
+      #loading-indicator[hidden] {
+        display: none;
+      }
+
+      #map-transition {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        background: #001022;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #map-transition[hidden] {
+        display: none;
+      }
+
+      #scene-intro {
+        position: absolute;
+        inset: 0;
+        z-index: 12;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        background: rgba(0, 10, 25, 0.62);
+        text-align: center;
+        opacity: 1;
+        transition: opacity 350ms;
+        pointer-events: none;
+      }
+
+      #scene-intro[hidden],
+      #caption[hidden] {
+        display: none;
+      }
+
+      #scene-intro.leaving {
+        opacity: 0;
+      }
+
+      #scene-intro.opening {
+        background: transparent;
+      }
+
+      #scene-intro small {
+        color: #8bd6ff;
+        font-size: 14px;
+        letter-spacing: 0.3em;
+      }
+
+      #scene-intro h1 {
+        max-width: 1000px;
+        margin: 16px 0;
+        font-size: clamp(28px, 4vw, 56px);
+        text-shadow: 0 2px 15px #000;
+      }
+
+      #scene-intro p {
+        margin: 0;
+        color: #c5e7ff;
+        font-size: clamp(18px, 2vw, 28px);
+        text-shadow: 0 2px 15px #000;
+      }
+
+      #caption {
+        position: absolute;
+        left: 28px;
+        bottom: 28px;
+        z-index: 5;
+        width: min(590px, calc(100vw - 56px));
+        padding: 18px 22px;
+        border-left: 2px solid #4db8ff;
+        border-radius: 0 10px 10px 0;
+        background: rgba(2, 18, 42, 0.91);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(8px);
+      }
+
+      #caption.satellite-scene {
+        top: 84px;
+        right: 28px;
+        bottom: auto;
+        left: auto;
+        width: min(520px, calc(100vw - 56px));
+      }
+
+      #satellite-legend,
+      #maritime-legend {
+        position: absolute;
+        left: 28px;
+        bottom: 28px;
+        z-index: 6;
+        width: min(420px, calc(100vw - 56px));
+        padding: 14px 18px;
+        border: 1px solid rgba(111, 201, 255, 0.3);
+        border-radius: 9px;
+        background: rgba(2, 18, 42, 0.91);
+        color: rgba(231, 244, 255, 0.86);
+        font-size: 12px;
+        line-height: 1.6;
+        pointer-events: none;
+      }
+
+      #satellite-legend[hidden],
+      #maritime-legend[hidden],
+      #observation-metadata[hidden],
+      #layer-stack[hidden],
+      #saved-contexts[hidden],
+      #demo-pointer[hidden] {
+        display: none;
+      }
+
+      #layer-stack,
+      #saved-contexts {
+        position: absolute;
+        left: 28px;
+        top: 96px;
+        z-index: 7;
+        width: 330px;
+        padding: 15px;
+        border: 1px solid rgba(111, 201, 255, 0.3);
+        border-radius: 10px;
+        background: rgba(2, 18, 42, 0.94);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+      }
+
+      #layer-stack h3,
+      #saved-contexts h3 {
+        margin: 0 0 11px;
+        color: #70c7ff;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .layer-row,
+      .context-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 7px 12px;
+        align-items: center;
+        padding: 9px 10px;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.045);
+        color: rgba(231, 244, 255, 0.88);
+        font-size: 12px;
+      }
+
+      .context-row {
+        grid-template-columns: 70px 1fr 28px;
+        padding: 8px;
+        overflow: hidden;
+      }
+
+      .context-row img {
+        width: 70px;
+        height: 54px;
+        object-fit: cover;
+        border-radius: 4px;
+      }
+
+      .context-row b,
+      .context-row small {
+        display: block;
+      }
+
+      .context-row small {
+        margin-top: 4px;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .context-delete {
+        align-self: stretch;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        background: transparent;
+        color: #d8edff;
+        font-size: 20px;
+      }
+
+      .layer-row + .layer-row,
+      .context-row + .context-row {
+        margin-top: 7px;
+      }
+
+      .layer-row small,
+      .context-row small {
+        color: #8bd6ff;
+      }
+
+      .layer-row input {
+        grid-column: 1 / -1;
+        width: 100%;
+        accent-color: #4db8ff;
+      }
+
+      .context-row[data-active="true"] {
+        outline: 1px solid #4db8ff;
+        background: rgba(77, 184, 255, 0.13);
+      }
+
+      #observation-metadata {
+        position: absolute;
+        right: 28px;
+        bottom: 110px;
+        z-index: 7;
+        width: min(430px, calc(100vw - 56px));
+        padding: 14px;
+        border: 1px solid rgba(0, 255, 242, 0.32);
+        border-radius: 9px;
+        background: rgba(2, 18, 42, 0.94);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
+        pointer-events: none;
+      }
+
+      .observation-record {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 14px;
+        padding: 10px 12px;
+        border-left: 2px solid #00fff2;
+        background: rgba(0, 255, 242, 0.06);
+        color: rgba(231, 244, 255, 0.82);
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .observation-record + .observation-record {
+        margin-top: 8px;
+      }
+
+      .observation-record strong {
+        grid-column: 1 / -1;
+        color: #74fff7;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        font-size: 13px;
+      }
+
+      .observation-record[data-state="hover"] strong::before {
+        content: "HOVER · ";
+        color: #ffffff;
+      }
+
+      .observation-record[data-state="selected"] strong::before {
+        content: "SELECTED · ";
+        color: #ffffff;
+      }
+
+      .legend-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .legend-swatch {
+        flex: 0 0 auto;
+        width: 20px;
+        height: 3px;
+        border-radius: 2px;
+      }
+
+      .legend-swatch.regions { background: #ff4d4d; }
+      .legend-swatch.track { background: #ffe066; }
+      .legend-swatch.footprints { background: #00fff2; }
+      .legend-swatch.satellite { background: #a6adb5; }
+      .legend-swatch.all-year { background: #ff2d95; }
+      .legend-swatch.seasonal { background: #7cff00; }
+      .legend-swatch.selected {
+        height: 10px;
+        border: 1px solid #ffffff;
+        background: rgba(255, 255, 255, 0.45);
+      }
+
+      #demo-pointer {
+        position: fixed;
+        display: block;
+        z-index: 2147483647;
+        width: 23px;
+        height: 28px;
+        overflow: visible;
+        filter: drop-shadow(1px 2px 2px #000);
+        transform: translate(-3px, -2px);
+        pointer-events: none;
+      }
+
+      #demo-pointer svg {
+        display: block;
+        width: 23px;
+        height: 28px;
+        overflow: visible;
+      }
+
+      #scene {
+        margin-bottom: 8px;
+        color: #70c7ff;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      #headline {
+        margin-bottom: 7px;
+        font-size: 25px;
+        font-weight: 720;
+      }
+
+      #detail {
+        color: rgba(231, 244, 255, 0.82);
+        line-height: 1.5;
+      }
+
+      #api-command {
+        display: block;
+        margin-top: 11px;
+        color: #8bd6ff;
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      #provenance {
+        position: absolute;
+        top: 22px;
+        left: 22px;
+        z-index: 5;
+        max-width: min(620px, 60vw);
+        padding: 12px 15px;
+        border: 1px solid rgba(141, 201, 242, 0.24);
+        border-radius: 8px;
+        background: rgba(1, 13, 31, 0.82);
+        color: rgba(224, 241, 255, 0.78);
+        font-size: 11px;
+        line-height: 1.45;
+        pointer-events: none;
+      }
+
+      #provenance strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #85ceff;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      #telemetry {
+        position: absolute;
+        right: 22px;
+        bottom: 28px;
+        z-index: 5;
+        min-width: 270px;
+        padding: 13px 16px;
+        border: 1px solid rgba(117, 192, 242, 0.24);
+        border-radius: 9px;
+        background: rgba(1, 13, 31, 0.86);
+        color: rgba(224, 241, 255, 0.78);
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.55;
+        pointer-events: none;
+      }
+
+      #controls {
+        position: absolute;
+        top: 90px;
+        right: 22px;
+        z-index: 7;
+        display: flex;
+        gap: 7px;
+        padding: 10px;
+        border: 1px solid rgba(135, 198, 240, 0.25);
+        border-radius: 9px;
+        background: rgba(2, 18, 42, 0.9);
+      }
+
+      #controls[hidden] {
+        display: none;
+      }
+
+      button {
+        padding: 8px 13px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 6px;
+        background: #194b73;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #21608f;
+      }
+
+      button:disabled {
+        cursor: default;
+        opacity: 0.45;
+      }
+
+      #status {
+        position: absolute;
+        left: 50%;
+        bottom: 8px;
+        z-index: 9;
+        transform: translateX(-50%);
+        color: rgba(215, 235, 250, 0.65);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      #version {
+        position: absolute;
+        right: 12px;
+        bottom: 8px;
+        z-index: 9;
+        color: rgba(173, 209, 235, 0.48);
+        font-family:
+          ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      #credits {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        border: 0;
+        width: 100%;
+        height: 100%;
+        background: #001022;
+      }
+
+      #credits[hidden] {
+        display: none;
+      }
+
+      @media (max-width: 900px) {
+        #provenance {
+          max-width: calc(100vw - 44px);
+        }
+
+        #telemetry {
+          display: none;
+        }
+
+        #caption {
+          right: 22px;
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <canvas id="astrocanvas"></canvas>
+
+      <div id="coords-grid-labels"></div>
+      <div id="healpix-grid-labels"></div>
+      <div id="map-transition" hidden></div>
+      <div id="scene-intro" hidden>
+        <small></small>
+        <h1></h1>
+        <p hidden></p>
+      </div>
+
+      <aside id="satellite-legend" hidden>
+        <div class="legend-row"><span class="legend-swatch regions"></span>Spanish administrative regions</div>
+        <div class="legend-row"><span class="legend-swatch track"></span>Satellite ground-track projection</div>
+        <div class="legend-row"><span class="legend-swatch footprints"></span>Images acquired by the satellite</div>
+        <div class="legend-row"><span class="legend-swatch satellite"></span>Satellite, sensor rays and current image footprint</div>
+        <div class="legend-row"><span class="legend-swatch selected"></span>Regions intersecting the current image footprint</div>
+      </aside>
+
+      <aside id="maritime-legend" hidden>
+        <div class="legend-row"><span class="legend-swatch all-year"></span>All-year ferry service</div>
+        <div class="legend-row"><span class="legend-swatch seasonal"></span>Seasonal ferry service</div>
+      </aside>
+
+      <aside id="observation-metadata" hidden aria-live="polite"></aside>
+
+      <aside id="layer-stack" hidden>
+        <h3>Earth raster stack</h3>
+        <div id="layer-stack-rows"></div>
+      </aside>
+
+      <aside id="saved-contexts" hidden>
+        <h3>Saved Earth contexts</h3>
+        <div id="saved-context-rows"></div>
+      </aside>
+
+      <div id="demo-pointer" hidden aria-hidden="true">
+        <svg viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M3 2V28L10 21L15 32L20 29L15 19H25Z"
+            fill="white"
+            stroke="#071629"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+
+      <aside id="provenance">
+        <strong>Maps &amp; provenance</strong>
+        <div id="provenance-content">
+          Earth imagery not loaded
+        </div>
+      </aside>
+
+      <aside id="caption">
+        <div id="scene">E00 / Initialising</div>
+        <div id="headline">Earth Observation Showcase</div>
+        <div id="detail">
+          Preparing AstroViewer’s Earth rendering domain.
+        </div>
+        <code id="api-command"></code>
+      </aside>
+
+      <aside id="telemetry">
+        <div id="coordinate-status">Center: —</div>
+        <div id="fov-status">FoV: —</div>
+        <div id="tile-status">Tiles: —</div>
+      </aside>
+
+      <nav id="controls" aria-label="Showcase controls">
+        <button id="run-button" type="button">Run E00</button>
+        <button id="pause-button" type="button" disabled>
+          Pause
+        </button>
+        <button id="reset-button" type="button">Reset</button>
+      </nav>
+
+      <div id="loading-indicator">Loading Earth imagery…</div>
+
+      <div id="status" aria-live="polite">
+        Initialising E00
+      </div>
+
+      <div id="version">
+        AstroViewer v%ASTRO_VIEWER_VERSION%
+      </div>
+
+      <iframe
+        id="credits"
+        title="AstroViewer Earth Observation Showcase credits"
+        src="./credits.html"
+        hidden
+      ></iframe>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

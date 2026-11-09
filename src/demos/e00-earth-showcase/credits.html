@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>AstroViewer Earth Observation Showcase — Credits</title>
+
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        color: #f5f9ff;
+        background: #020914;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(
+            circle at 22% 24%,
+            rgba(18, 119, 170, 0.2),
+            transparent 32%
+          ),
+          radial-gradient(
+            circle at 80% 72%,
+            rgba(29, 96, 154, 0.14),
+            transparent 34%
+          ),
+          linear-gradient(145deg, #06162a 0%, #020914 55%, #010611 100%);
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        content: "";
+        opacity: 0.65;
+        background-image:
+          radial-gradient(circle at 8% 9%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 27% 16%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 53% 7%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 74% 11%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 92% 18%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 14% 72%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 46% 88%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 81% 84%, #8bd8ff 0 1px, transparent 2px),
+          radial-gradient(circle at 96% 69%, #8bd8ff 0 1px, transparent 2px);
+      }
+
+      main {
+        position: relative;
+        width: calc(100% - 8vw);
+        height: calc(100% - 10vh);
+        padding: clamp(28px, 4vh, 56px) clamp(38px, 5vw, 80px);
+        overflow: hidden;
+        border: 1px solid rgba(121, 195, 241, 0.25);
+        border-radius: 28px;
+        background: rgba(2, 12, 28, 0.76);
+        box-shadow:
+          0 28px 90px rgba(0, 0, 0, 0.32),
+          inset 0 0 70px rgba(12, 77, 122, 0.08);
+      }
+
+      header {
+        text-align: center;
+      }
+
+      .brand {
+        margin: 0 0 12px;
+        color: #83d5ff;
+        font-size: clamp(14px, 1.3vw, 24px);
+        font-weight: 750;
+        letter-spacing: 0.34em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(38px, 4.3vw, 76px);
+        line-height: 1;
+        letter-spacing: -0.045em;
+      }
+
+      .subtitle {
+        margin: 22px 0 0;
+        color: #aebed2;
+        font-size: clamp(17px, 1.55vw, 29px);
+      }
+
+      .people {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5vw;
+        margin-top: clamp(32px, 5vh, 66px);
+      }
+
+      .person {
+        min-height: 116px;
+        padding: 25px 28px 22px 32px;
+        border-left: 4px solid #43bfff;
+        background: linear-gradient(
+          90deg,
+          rgba(13, 54, 89, 0.72),
+          rgba(4, 20, 39, 0.12)
+        );
+      }
+
+      .person h2 {
+        margin: 0;
+        font-size: clamp(21px, 1.8vw, 34px);
+        letter-spacing: -0.025em;
+      }
+
+      .role {
+        margin: 12px 0 0;
+        color: #8fd0f4;
+        font-size: clamp(13px, 1.05vw, 20px);
+        font-weight: 750;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+      }
+
+      .credits {
+        display: grid;
+        grid-template-columns: 1.25fr 1.15fr 1fr;
+        gap: 4vw;
+        margin-top: clamp(30px, 4.5vh, 60px);
+      }
+
+      section h3 {
+        margin: 0 0 18px;
+        color: #62c7ff;
+        font-size: clamp(13px, 1.05vw, 20px);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      section p {
+        margin: 0;
+        color: #b7c4d5;
+        font-size: clamp(14px, 1.12vw, 21px);
+        line-height: 1.65;
+      }
+
+      footer {
+        position: absolute;
+        right: clamp(38px, 5vw, 80px);
+        bottom: clamp(28px, 4vh, 54px);
+        left: clamp(38px, 5vw, 80px);
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 4vw;
+        align-items: end;
+        padding-top: 24px;
+        border-top: 1px solid rgba(126, 185, 223, 0.2);
+      }
+
+      .music {
+        color: #aebed2;
+        font-size: clamp(13px, 1vw, 19px);
+        line-height: 1.5;
+      }
+
+      .music strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #f4f8ff;
+      }
+
+      .projects {
+        color: #77b9df;
+        font-family:
+          "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: clamp(12px, 0.95vw, 18px);
+        letter-spacing: 0.08em;
+        text-align: right;
+      }
+
+      .pending {
+        color: #d7b87d;
+      }
+
+      @media (max-aspect-ratio: 4 / 3) {
+        main {
+          overflow: auto;
+        }
+
+        .people,
+        .credits,
+        footer {
+          grid-template-columns: 1fr;
+        }
+
+        footer {
+          position: static;
+          margin-top: 34px;
+        }
+
+        .projects {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <header>
+        <p class="brand">AstroViewer</p>
+        <h1>Earth Observation Showcase</h1>
+        <p class="subtitle">
+          Exploring our planet through open standards and geospatial data
+        </p>
+      </header>
+
+      <div class="people">
+        <article class="person">
+          <h2>Fabrizio Giordano</h2>
+          <p class="role">Creator &amp; Product Owner</p>
+        </article>
+
+        <article class="person">
+          <h2>Prof. Yago Ascasibar</h2>
+          <p class="role">
+            Co-Product Owner &amp; Scientific Advisor
+          </p>
+        </article>
+      </div>
+
+      <div class="credits">
+        <section>
+          <h3>Maps &amp; imagery</h3>
+          <p>
+            Esri World Imagery · NASA EOSDIS GIBS ·
+            © OpenStreetMap contributors · OpenTopoMap contributors
+          </p>
+        </section>
+
+        <section>
+          <h3>Geographic &amp; observation data</h3>
+          <p>
+            Synthetic AstroViewer demonstration data for cities, fire clusters,
+            administrative boundaries and observation tracks ·
+            European Atlas of the Seas ferry routes · © EuroGeographics 2022 ·
+            Place resolution by OpenStreetMap Nominatim ·
+            Weather data by Open-Meteo.com (CC BY 4.0) ·
+            Runtime summaries from Wikipedia
+          </p>
+        </section>
+
+        <section>
+          <h3>Standards &amp; technologies</h3>
+          <p>
+            OGC WMTS · XYZ tiles · GeoJSON · WebGL2 · TypeScript
+          </p>
+        </section>
+      </div>
+
+      <footer>
+        <div class="music">
+          <strong>Music</strong>
+          To be selected and license-verified before publication
+        </div>
+
+        <div class="projects">
+          astro-viewer · astrospatial-core · astrospatial-services
+        </div>
+      </footer>
+    </main>
+  </body>
+</html>
