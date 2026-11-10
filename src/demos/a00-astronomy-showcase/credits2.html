@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AstroViewer — Astronomy Showcase Credits</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #001032;
+        color: #f7fbff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 50% 44%, rgba(36, 116, 190, 0.2), transparent 32%),
+          radial-gradient(circle at 12% 18%, rgba(92, 163, 225, 0.12), transparent 24%),
+          radial-gradient(circle at 87% 78%, rgba(49, 103, 174, 0.12), transparent 25%),
+          linear-gradient(145deg, #00102f 0%, #020817 72%, #00050f 100%);
+      }
+
+      .stars,
+      .stars::before,
+      .stars::after {
+        position: absolute;
+        inset: 0;
+        content: "";
+        pointer-events: none;
+        background-repeat: repeat;
+      }
+
+      .stars {
+        opacity: 0.48;
+        background-image:
+          radial-gradient(circle at 8% 16%, #fff 0 1px, transparent 1.7px),
+          radial-gradient(circle at 22% 73%, #9dccff 0 1px, transparent 1.7px),
+          radial-gradient(circle at 42% 27%, #fff 0 1px, transparent 1.8px),
+          radial-gradient(circle at 63% 83%, #b8ddff 0 1px, transparent 1.7px),
+          radial-gradient(circle at 78% 31%, #fff 0 1px, transparent 1.8px),
+          radial-gradient(circle at 93% 62%, #91c9ff 0 1px, transparent 1.7px);
+        background-size: 360px 310px;
+      }
+
+      .stars::before {
+        opacity: 0.42;
+        transform: translate(90px, 45px) scale(0.72);
+        background-image: inherit;
+        background-size: 270px 235px;
+      }
+
+      .stars::after {
+        opacity: 0.24;
+        transform: translate(-70px, 20px) scale(1.25);
+        background-image: inherit;
+        background-size: 460px 390px;
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+        width: min(1540px, 86vw);
+        min-height: min(850px, 84vh);
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 36px;
+        padding: 64px 72px 52px;
+        border: 1px solid rgba(164, 213, 255, 0.2);
+        border-radius: 24px;
+        background: linear-gradient(145deg, rgba(2, 17, 45, 0.86), rgba(0, 7, 22, 0.9));
+        box-shadow: 0 32px 100px rgba(0, 0, 0, 0.42);
+        backdrop-filter: blur(10px);
+      }
+
+      header {
+        text-align: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: #85c8ff;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(48px, 4.1vw, 76px);
+        line-height: 1;
+        letter-spacing: -0.035em;
+      }
+
+      .subtitle {
+        margin: 17px 0 0;
+        color: rgba(228, 241, 255, 0.7);
+        font-size: 20px;
+        letter-spacing: 0.04em;
+      }
+
+      .people {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+
+      .person {
+        padding: 22px 28px;
+        border-left: 2px solid #55b7ff;
+        background: linear-gradient(90deg, rgba(63, 155, 224, 0.12), transparent 80%);
+      }
+
+      .person strong {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 25px;
+        letter-spacing: -0.01em;
+      }
+
+      .person span {
+        color: #99d2ff;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+      }
+
+      .credits-grid {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr 1fr;
+        gap: 42px;
+        align-content: center;
+      }
+
+      section h2 {
+        margin: 0 0 13px;
+        color: #72c2ff;
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      section p {
+        margin: 0;
+        color: rgba(235, 246, 255, 0.78);
+        font-size: 16px;
+        line-height: 1.62;
+      }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 36px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(165, 210, 245, 0.16);
+      }
+
+      .music {
+        flex: 1;
+        min-width: 0;
+        color: rgba(232, 244, 255, 0.76);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .music strong {
+        color: #fff;
+      }
+
+      .music-credit {
+        white-space: nowrap;
+      }
+
+      .brand {
+        color: rgba(164, 212, 250, 0.72);
+        font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+        font-size: 14px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      @media (max-aspect-ratio: 4 / 3) {
+        main {
+          width: 92vw;
+          padding: 48px;
+        }
+
+        .credits-grid {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stars" aria-hidden="true"></div>
+    <main>
+      <header>
+        <p class="eyebrow">AstroViewer</p>
+        <h1>Astronomy Showcase</h1>
+        <p class="subtitle">Exploring the Universe through open standards and scientific data</p>
+      </header>
+
+      <div class="people">
+        <div class="person">
+          <strong>Dr. Fabrizio Giordano</strong>
+          <span>Creator &amp; Product Owner</span>
+        </div>
+        <div class="person">
+          <strong>Dr. Yago Ascasibar</strong>
+          <span>Co-Product Owner &amp; Scientific Advisor</span>
+        </div>
+      </div>
+
+      <div class="credits-grid">
+        <section>
+          <h2>Scientific data &amp; archives</h2>
+          <p>
+            CDS · ESA / ESAC · ESASky · XSA · NASA · MAST · STScI ·
+            Chandra Data Archive / CXC · IPAC · UMass · Sloan Digital Sky
+            Survey · Hubble Source Catalog
+          </p>
+        </section>
+        <section>
+          <h2>Surveys &amp; missions</h2>
+          <p>
+            DSS · SDSS · GALEX · 2MASS · AllWISE · Herschel · HST ·
+            XMM-Newton · Chandra · Planck
+          </p>
+        </section>
+        <section>
+          <h2>Standards &amp; technologies</h2>
+          <p>
+            IVOA · HiPS · HEALPix · FITS · WCS · TAP · ADQL · VOTable ·
+            WebGL2
+          </p>
+        </section>
+      </div>
+
+      <footer>
+        <div class="music">
+          <strong>Music</strong><br />
+          <span class="music-credit">“Distance” — Infinite Reflections · Francesco Siano</span>
+        </div>
+        <div class="brand">astro-viewer · astrospatial-services · astrospatial-core</div>
+      </footer>
+    </main>
+  </body>
+</html>
