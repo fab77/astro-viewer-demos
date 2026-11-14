@@ -28,6 +28,8 @@ import hscUrl from "./hsc_m51_sources.json?url";
 import hstUrl from "./hst_m51_observations.json?url";
 import m101Url from "./hsc_m101_sources.json?url";
 
+declare const __A00_SOUNDTRACK_URL__: string;
+
 const XMM_TAP_ENDPOINT = "https://nxsa.esac.esa.int/tap-server/tap";
 const transport = new FetchHttpTransport((input, init) =>
   fetch(
@@ -130,14 +132,37 @@ const canvas = get<HTMLCanvasElement>("astrocanvas");
 const status = get<HTMLElement>("status");
 const fitsModeBadge = get<HTMLElement>("fits-mode-badge");
 const title = get<HTMLElement>("title");
+const musicCredit = get<HTMLElement>("music-credit");
 const runButton = get<HTMLButtonElement>("run-button");
 const pauseButton = get<HTMLButtonElement>("pause-button");
 const resetButton = get<HTMLButtonElement>("reset-button");
+const searchParams = new URLSearchParams(location.search);
 const mode =
-  new URLSearchParams(location.search).get("mode") === "video"
+  searchParams.get("mode") === "video"
     ? "video"
     : "interactive";
-get<HTMLElement>("controls").hidden = mode === "video";
+const soundtrackEnabled = searchParams.get("soundtrack") === "1";
+const soundtrack = new Audio();
+if (soundtrackEnabled) {
+  soundtrack.src = __A00_SOUNDTRACK_URL__;
+  soundtrack.preload = "auto";
+}
+get<HTMLElement>("controls").hidden = mode === "video" && !soundtrackEnabled;
+let musicCreditTimer = 0;
+
+function showMusicCredit(text: string, durationMs: number): void {
+  window.clearTimeout(musicCreditTimer);
+  musicCredit.classList.remove("visible");
+  musicCredit.textContent = text;
+  // Restart the fade when the second track credit replaces the first one.
+  void musicCredit.offsetWidth;
+  musicCredit.classList.add("visible");
+  musicCreditTimer = window.setTimeout(
+    () => musicCredit.classList.remove("visible"),
+    durationMs,
+  );
+}
+
 const viewer = new AstroViewer(canvas, {
   gridLabelContainers: {
     coords: get<HTMLDivElement>("coords-grid-labels"),
@@ -632,7 +657,7 @@ function footprintPosition(footprint: Footprint): { ra: number; dec: number } {
   );
   const dec = Number(
     row[
-      hstFixture.columns.findIndex((c) => c.name === hstFixture!.mapping.dec)
+    hstFixture.columns.findIndex((c) => c.name === hstFixture!.mapping.dec)
     ],
   );
   if (!Number.isFinite(ra) || !Number.isFinite(dec))
@@ -645,7 +670,7 @@ const check = (token: number) => {
   if (token !== generation) throw new Error("Sequence cancelled");
 };
 async function wait(ms: number, token: number): Promise<void> {
-  for (let elapsed = 0; elapsed < ms; ) {
+  for (let elapsed = 0; elapsed < ms;) {
     check(token);
     if (paused) {
       await sleep(50);
@@ -778,7 +803,7 @@ async function fadeTo(key: SurveyKey, token: number, durationMs = 1400): Promise
     console.warn(`A00: ${surveys[key].name} unavailable`, error);
     caption(
       get<HTMLElement>("scene").textContent ??
-        "02 / Across the electromagnetic spectrum",
+      "02 / Across the electromagnetic spectrum",
       `${surveys[key].name} — unavailable`,
       `This service did not respond. The previous map remains visible; this is not a ${key.toUpperCase()} image.`,
       surveys[key].url,
@@ -923,6 +948,10 @@ function setEquatorialGridVisible(visible: boolean): void {
 async function reset(): Promise<void> {
   dataExample.hidden = true;
   if (running) return;
+  if (soundtrackEnabled) {
+    soundtrack.pause();
+    soundtrack.currentTime = 0;
+  }
   paused = false;
   get<HTMLElement>("ecosystem-diagram").hidden = true;
   clearSavedViews();
@@ -949,11 +978,40 @@ async function reset(): Promise<void> {
   controls();
 }
 type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-const initialScene = Number(new URLSearchParams(location.search).get("scene"));
+const initialScene = Number(searchParams.get("scene"));
 const requestedScene: SceneNumber =
   Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 10
     ? (initialScene as SceneNumber)
     : 1;
+
+// Cue points follow the validated postproduction timeline. They are used only
+// when a scene is launched directly; a complete run never auto-corrects drift.
+const soundtrackCueSeconds: Record<SceneNumber, number> = {
+  1: 15,
+  2: 39,
+  3: 64,
+  4: 82,
+  5: 100,
+  6: 176,
+  7: 203,
+  8: 253.3,
+  9: 317.8,
+  10: 382.8,
+};
+
+async function startSoundtrack(startScene: SceneNumber): Promise<void> {
+  if (!soundtrackEnabled) return;
+  soundtrack.pause();
+  soundtrack.currentTime = startScene === 1 ? 0 : soundtrackCueSeconds[startScene];
+  try {
+    await soundtrack.play();
+  } catch (error) {
+    audit.warnings.push(
+      "The validation soundtrack could not start. Press Run showcase to grant audio playback.",
+    );
+    console.warn("A00 validation soundtrack could not start", error);
+  }
+}
 
 // restoreState recreates HiPS; never retain an instance detached by the engine.
 function rebindLayers(): void {
@@ -1054,8 +1112,8 @@ function showMetadata(
         ? Math.abs(Number(values[i])) > 0 && Math.abs(Number(values[i])) < 0.001
           ? Number(values[i]).toExponential(3)
           : Number(values[i])
-              .toFixed(/ra|dec/.test(c.name) ? 5 : 3)
-              .replace(/\.?0+$/, "")
+            .toFixed(/ra|dec/.test(c.name) ? 5 : 3)
+            .replace(/\.?0+$/, "")
         : values[i];
     line.textContent = `${c.name}: ${value}${c.unit ? " " + c.unit : ""}`;
     card.append(line);
@@ -1235,7 +1293,6 @@ async function prepareFITS(layer: HiPS, token: number): Promise<void> {
     for (let elapsed = 0; elapsed < 20000; elapsed += 500) {
       await wait(500, token);
       if (
-        elapsed >= 7500 &&
         layer.getFITSDisplayRange(undefined) &&
         layer.getDebugStats().loadingTileCount === 0
       ) {
@@ -1493,13 +1550,19 @@ async function showOpening(token: number): Promise<void> {
   intro.querySelector("small")!.hidden = true;
   intro.querySelector("h1")!.textContent = "AstroViewer";
   const subtitle = intro.querySelector("p")!;
-  subtitle.textContent = "Exploring the Universe";
+  subtitle.textContent =
+    "A 3D astronomy viewer in an open scientific software ecosystem";
   subtitle.hidden = false;
   get<HTMLElement>("caption").hidden = true;
   intro.hidden = false;
 
+
   try {
     await wait(500, token);
+    showMusicCredit(
+      "Music courtesy of Infinite Reflections — Reminiscences",
+      5000,
+    );
     // Three-second fade; wait() also honours the showcase pause control.
     for (let step = 1; step <= 60; step++) {
       await wait(50, token);
@@ -2287,6 +2350,10 @@ ORDER BY duration DESC`;
     "Use FIELD metadata for names and units; explicitly map ra, dec and iauname to the viewer's coordinate and identifier roles.",
     'const columns = tapViewerColumns(table.columns, "iauname");\nconst catalogue = viewer.createCatalogue("Live XMM detections", "Perseus", XMM_TAP_ENDPOINT, new MetadataManager(columns));\ncatalogue.addSources(table.rows, columns);\nviewer.showCatalogue(catalogue);',
   );
+  showMusicCredit(
+    "Music courtesy of Infinite Reflections — Distance",
+    5000,
+  );
   catalogue = viewer.addCatalogue(
     { ...table, columns },
     {
@@ -2413,13 +2480,17 @@ async function scene07SavedViews(token: number): Promise<void> {
   showOnly("optical");
   await ensureLayer("nearinfrared");
   viewer.setHiPSOpacity(layers.get("nearinfrared")!, 0.65);
-  await wait(4000, token);
+  // In the edited video the saved card lands half a second earlier on the
+  // musical accent. Restore that half-second after the card is visible so the
+  // following target keeps its original timing.
+  await wait(3500, token);
   await captureSavedView(
     "A00-M45",
     "Pleiades · M45",
     "DSS + 2MASS 65% · FoV 5°",
     token,
   );
+  await wait(500, token);
   await frameSavedTarget(210.8023, 54.3489, 0.5, "M101", token);
   caption(
     "07 / Scientific view state",
@@ -2454,14 +2525,16 @@ async function scene07SavedViews(token: number): Promise<void> {
   await wait(1200, token);
   for (const id of ["A00-M51", "A00-M45", "A00-M101"]) {
     await clickSavedControl(`[data-state-restore="${id}"]`, token);
-    await wait(2800, token);
+    // The final restored view was shortened by 1.2 seconds in postproduction.
+    await wait(id === "A00-M101" ? 1600 : 2800, token);
   }
   audit.stateRestored = ["A00-M51", "A00-M45", "A00-M101"].every((id) =>
     audit.restoredStates.includes(id),
   );
   for (const id of ["A00-M51", "A00-M45", "A00-M101"]) {
     await clickSavedControl(`[data-state-delete="${id}"]`, token);
-    await wait(900, token);
+    // The first two static deletion holds were removed from the edited video.
+    await wait(id === "A00-M101" ? 900 : 0, token);
   }
   caption(
     "07 / Scientific view state",
@@ -2469,7 +2542,7 @@ async function scene07SavedViews(token: number): Promise<void> {
     "All three saved snapshots are removed. Continue from the current sky.",
     "viewer.getStateNames(); // A00 snapshots removed",
   );
-  await wait(900, token);
+  await wait(700, token);
   stateStack.hidden = true;
   stateStackInteractive = false;
   hideInteraction();
@@ -2592,7 +2665,12 @@ async function scene08FITS(token: number): Promise<void> {
       stretch.description,
       `viewer.changeColorMap("planck");\nviewer.setHiPSFITSScaleFunction("${stretch.name}")`,
     );
-    await wait(3700, token);
+    // The log and asinh captions were each moved 0.2 seconds earlier to meet
+    // the musical pulse. The time is returned before leaving this scene.
+    await wait(
+      stretch.name === "sqrt" || stretch.name === "log" ? 3500 : 3700,
+      token,
+    );
   }
   // Per-tile ranges can create visible discontinuities at tile boundaries.
   const ranges = [
@@ -2625,6 +2703,7 @@ async function scene08FITS(token: number): Promise<void> {
         : " · numerical range unavailable");
     await wait(4200, token);
   }
+  await wait(400, token);
   fitsModeBadge.hidden = true;
   viewer.changeHiPSFormat("png");
   showOnly("optical");
@@ -2868,29 +2947,29 @@ const showcaseScenes: Array<{
   title: string;
   run: (token: number) => Promise<void>;
 }> = [
-  { number: 1, title: "Navigation", run: scene01Navigation },
-  {
-    number: 2,
-    title: "M42 — A multiwavelength view",
-    run: scene02Spectrum,
-  },
-  { number: 3, title: "Three-layer compositing", run: scene03Compositing },
-  { number: 4, title: "Equatorial & HEALPix grids", run: scene04Grids },
-  {
-    number: 5,
-    title: "Catalogues & footprints (JSON / CSV)",
-    run: scene05CataloguesAndFootprints,
-  },
-  { number: 6, title: "Live XMM TAP · ADQL", run: scene06LiveTAP },
-  { number: 7, title: "Scientific view states", run: scene07SavedViews },
-  { number: 8, title: "FITS & colour mapping", run: scene08FITS },
-  {
-    number: 9,
-    title: "Inside the celestial sphere",
-    run: scene09InsideSphere,
-  },
-  { number: 10, title: "Technology & data ecosystem", run: scene10Ecosystem },
-];
+    { number: 1, title: "Navigation", run: scene01Navigation },
+    {
+      number: 2,
+      title: "M42 — A multiwavelength view",
+      run: scene02Spectrum,
+    },
+    { number: 3, title: "Three-layer compositing", run: scene03Compositing },
+    { number: 4, title: "Equatorial & HEALPix grids", run: scene04Grids },
+    {
+      number: 5,
+      title: "Catalogues & footprints (JSON / CSV)",
+      run: scene05CataloguesAndFootprints,
+    },
+    { number: 6, title: "Live XMM TAP · ADQL", run: scene06LiveTAP },
+    { number: 7, title: "Scientific view states", run: scene07SavedViews },
+    { number: 8, title: "FITS & colour mapping", run: scene08FITS },
+    {
+      number: 9,
+      title: "Inside the celestial sphere",
+      run: scene09InsideSphere,
+    },
+    { number: 10, title: "Technology & data ecosystem", run: scene10Ecosystem },
+  ];
 
 async function runA00(startScene: SceneNumber = 1): Promise<void> {
   if (running) return;
@@ -2908,6 +2987,7 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
   clearSavedViews();
   status.textContent = "Running A00";
   try {
+    await startSoundtrack(startScene);
     setEquatorialGridVisible(false);
     setHealpixGridVisible(false);
     clearCatalogue();
@@ -2969,6 +3049,9 @@ async function runA00(startScene: SceneNumber = 1): Promise<void> {
     running = false;
     paused = false;
     title.classList.remove("visible");
+    window.clearTimeout(musicCreditTimer);
+    musicCredit.classList.remove("visible");
+    soundtrack.pause();
     controls();
   }
 }
@@ -3008,6 +3091,13 @@ document.addEventListener("keydown", (event) => {
 });
 pauseButton.addEventListener("click", () => {
   paused = !paused;
+  if (soundtrackEnabled) {
+    if (paused) soundtrack.pause();
+    else
+      void soundtrack.play().catch((error) =>
+        console.warn("A00 validation soundtrack could not resume", error),
+      );
+  }
   status.textContent = paused ? "Paused" : "Running A00";
   controls();
 });
@@ -3027,8 +3117,15 @@ void ensureLayer("optical")
   })
   .then(() => {
     window.astroViewerDemo!.ready = true;
-    if (mode === "video" || new URLSearchParams(location.search).has("scene"))
+    // Soundtrack validation waits for the Run button so browser autoplay
+    // restrictions cannot silently start the scene without its music.
+    if (
+      !soundtrackEnabled &&
+      (mode === "video" || searchParams.has("scene"))
+    )
       void runA00(requestedScene);
+    else if (soundtrackEnabled)
+      status.textContent = "Soundtrack ready · press Run showcase";
   })
   .catch((error) => {
     console.error("A00 optical survey failed", error);
