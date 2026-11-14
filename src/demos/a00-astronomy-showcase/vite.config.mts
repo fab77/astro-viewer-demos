@@ -1,5 +1,10 @@
 import { readFileSync } from "node:fs";
-import { defineConfig } from "vite";
+import { dirname } from "node:path";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
+
+const localSoundtrackPath =
+  process.env.A00_SOUNDTRACK ??
+  "/tmp/astroviewer-a00-sync/a00-audio.wav";
 
 const lockfile = JSON.parse(
   readFileSync(new URL("../../../package-lock.json", import.meta.url), "utf8"),
@@ -19,7 +24,20 @@ const proxy = {
   },
 };
 export default defineConfig({
-  server: { proxy },
+  // The optional validation soundtrack remains outside the repository and is
+  // exposed only by the local development server.
+  define: {
+    __A00_SOUNDTRACK_URL__: JSON.stringify(`/@fs${localSoundtrackPath}`),
+  },
+  server: {
+    proxy,
+    fs: {
+      allow: [
+        searchForWorkspaceRoot(process.cwd()),
+        dirname(localSoundtrackPath),
+      ],
+    },
+  },
   preview: { proxy },
   plugins: [
     {
