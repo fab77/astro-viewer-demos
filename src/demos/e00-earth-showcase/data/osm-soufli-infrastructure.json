@@ -1,0 +1,1371 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-15T15:24:58.995Z",
+  "sourceUrl": "https://api.openstreetmap.org/api/0.6/map?bbox=26.27,41.16,26.34,41.23",
+  "area": {
+    "west": 26.27,
+    "south": 41.16,
+    "east": 26.34,
+    "north": 41.23
+  },
+  "categories": [
+    "bridge",
+    "transport",
+    "healthcare",
+    "emergency",
+    "education",
+    "public-service",
+    "utility",
+    "poi"
+  ],
+  "features": [
+    {
+      "id": "way/430280815",
+      "osmType": "way",
+      "longitudeDeg": 26.31599436,
+      "latitudeDeg": 41.19538502,
+      "category": "utility",
+      "tags": {
+        "man_made": "wastewater_plant"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/430280815",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/165467930",
+      "osmType": "way",
+      "longitudeDeg": 26.3131013,
+      "latitudeDeg": 41.214875649999996,
+      "name": "Alexandroupoli - Svilengrad",
+      "category": "bridge",
+      "tags": {
+        "bridge": "yes",
+        "electrified": "no",
+        "gauge": "1435",
+        "layer": "1",
+        "maxspeed": "90",
+        "name": "Alexandroupoli - Svilengrad",
+        "operator": "Σιδηρόδρομοι Ελλάδος",
+        "passenger_lines": "1",
+        "railway": "rail",
+        "railway:etcs": "no",
+        "railway:gnt": "no",
+        "railway:lzb": "no",
+        "railway:pzb": "no",
+        "usage": "main"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/165467930",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/539930161",
+      "osmType": "way",
+      "longitudeDeg": 26.304806839999998,
+      "latitudeDeg": 41.194273179999996,
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:housenumber": "10",
+        "addr:postcode": "68400",
+        "addr:street": "Ελευθερίου Βενιζέλου",
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/539930161",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/5209487621",
+      "osmType": "node",
+      "longitudeDeg": 26.3048022,
+      "latitudeDeg": 41.1942201,
+      "name": "Τράπεζα Έβρου",
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:housenumber": "10",
+        "addr:postcode": "68400",
+        "addr:street": "Ελευθερίου Βενιζέλου",
+        "amenity": "bank",
+        "atm": "yes",
+        "bic": "STEOGR21",
+        "branch": "ΣΟΥΦΛΙΟΥ",
+        "brand": "Συνεταιριστική Τράπεζα Έβρου",
+        "drive_through": "no",
+        "int_name": "Cooperative Bank of Evros",
+        "name": "Τράπεζα Έβρου",
+        "opening_hours": "Mo-Th 08:00-14:30; Fr 08:00-14:00",
+        "operator": "Τράπεζα Έβρου",
+        "ref": "088 0050",
+        "short_name": "Έβρου",
+        "source": "Hellenic Bank Association"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/5209487621",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608651",
+      "osmType": "way",
+      "longitudeDeg": 26.302907419999997,
+      "latitudeDeg": 41.19448162,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608651",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/4835440008",
+      "osmType": "node",
+      "longitudeDeg": 26.3051161,
+      "latitudeDeg": 41.1943984,
+      "category": "poi",
+      "tags": {
+        "amenity": "fast_food",
+        "cuisine": "international"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/4835440008",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/8749932352",
+      "osmType": "node",
+      "longitudeDeg": 26.3047577,
+      "latitudeDeg": 41.1961757,
+      "name": "Koukouli",
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:postcode": "68400",
+        "email": "info@hotelkoukouli.gr; apalexoudis@yahoo.gr",
+        "name": "Koukouli",
+        "phone": "+302554022400; +302554024024",
+        "tourism": "hotel",
+        "website": "http://www.koukoulihotel.gr"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/8749932352",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/6708459191",
+      "osmType": "node",
+      "longitudeDeg": 26.305537,
+      "latitudeDeg": 41.1952524,
+      "name": "Saloon",
+      "category": "poi",
+      "tags": {
+        "amenity": "cafe",
+        "name": "Saloon"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/6708459191",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/5223912433",
+      "osmType": "node",
+      "longitudeDeg": 26.3054257,
+      "latitudeDeg": 41.1943297,
+      "name": "Εθνική Τράπεζα",
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:housenumber": "23",
+        "addr:postcode": "68400",
+        "addr:street": "Πλατεία 25ης Μαρτίου",
+        "amenity": "bank",
+        "atm": "yes",
+        "bic": "ETHNGRAA",
+        "branch": "ΣΟΥΦΛΙΟΥ",
+        "brand": "Εθνική Τράπεζα",
+        "brand:el": "Εθνική Τράπεζα",
+        "brand:en": "National Bank of Greece",
+        "brand:wikidata": "Q1816028",
+        "drive_through": "no",
+        "int_name": "National Bank of Greece",
+        "name": "Εθνική Τράπεζα",
+        "name:el": "Εθνική Τράπεζα",
+        "name:en": "National Bank of Greece",
+        "opening_hours": "Mo-Th 08:00-14:30; Fr 08:00-14:00",
+        "operator": "Εθνική Τράπεζα",
+        "ref": "011 0467",
+        "short_name": "Εθνική",
+        "source": "Hellenic Bank Association"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/5223912433",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608704",
+      "osmType": "way",
+      "longitudeDeg": 26.302805,
+      "latitudeDeg": 41.19394103999999,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608704",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/539925254",
+      "osmType": "way",
+      "longitudeDeg": 26.305477160000002,
+      "latitudeDeg": 41.194378040000004,
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:housenumber": "23",
+        "addr:postcode": "68400",
+        "addr:street": "Πλατεία 25ης Μαρτίου",
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/539925254",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/541635163",
+      "osmType": "way",
+      "longitudeDeg": 26.3054466,
+      "latitudeDeg": 41.19429996,
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:housenumber": "25",
+        "addr:postcode": "68400",
+        "addr:street": "Πλατεία 25ης Μαρτίου",
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/541635163",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608691",
+      "osmType": "way",
+      "longitudeDeg": 26.302486699999996,
+      "latitudeDeg": 41.1944498,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608691",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608652",
+      "osmType": "way",
+      "longitudeDeg": 26.30258374,
+      "latitudeDeg": 41.19421156,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608652",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/4835440009",
+      "osmType": "node",
+      "longitudeDeg": 26.304864,
+      "latitudeDeg": 41.1936193,
+      "name": "Μουσείο Τέχνης Μεταξιού",
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:country": "GR",
+        "addr:housenumber": "199",
+        "addr:street": "Βασιλέως Γεωργίου",
+        "name": "Μουσείο Τέχνης Μεταξιού",
+        "name:bg": "Музей на коприната",
+        "name:el": "Μουσείο Τέχνης Μεταξιού",
+        "name:en": "Silk Museum",
+        "tourism": "museum",
+        "website": "https://www.piop.gr/en/diktuo-mouseion/silk-museum/"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/4835440009",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608703",
+      "osmType": "way",
+      "longitudeDeg": 26.30273796,
+      "latitudeDeg": 41.19391218,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608703",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608702",
+      "osmType": "way",
+      "longitudeDeg": 26.3024383,
+      "latitudeDeg": 41.1944017,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608702",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608705",
+      "osmType": "way",
+      "longitudeDeg": 26.302991759999998,
+      "latitudeDeg": 41.193661399999996,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608705",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/6708459190",
+      "osmType": "node",
+      "longitudeDeg": 26.3057547,
+      "latitudeDeg": 41.1952092,
+      "name": "Hotel Orpheus",
+      "category": "poi",
+      "tags": {
+        "name": "Hotel Orpheus",
+        "name:el": "Ορφέας",
+        "tourism": "hotel"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/6708459190",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608706",
+      "osmType": "way",
+      "longitudeDeg": 26.302786381818184,
+      "latitudeDeg": 41.193664463636374,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608706",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608716",
+      "osmType": "way",
+      "longitudeDeg": 26.30238362,
+      "latitudeDeg": 41.1941166,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608716",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608690",
+      "osmType": "way",
+      "longitudeDeg": 26.30220154,
+      "latitudeDeg": 41.1945422,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608690",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608710",
+      "osmType": "way",
+      "longitudeDeg": 26.30246318181818,
+      "latitudeDeg": 41.193894681818186,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608710",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608689",
+      "osmType": "way",
+      "longitudeDeg": 26.302126580000003,
+      "latitudeDeg": 41.19469628,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608689",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/5209437293",
+      "osmType": "node",
+      "longitudeDeg": 26.3048899,
+      "latitudeDeg": 41.1932994,
+      "name": "Alpha Bank",
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:housenumber": "146",
+        "addr:postcode": "68400",
+        "addr:street": "Βασιλέως Γεωργίου Β'",
+        "amenity": "bank",
+        "atm": "yes",
+        "bic": "CRBAGRAA",
+        "branch": "ΣΟΥΦΛΙΟΥ",
+        "brand": "Alpha Bank",
+        "brand:wikidata": "Q747394",
+        "drive_through": "no",
+        "int_name": "Alpha Bank",
+        "name": "Alpha Bank",
+        "opening_hours": "Mo-Th 08:00-14:30; Fr 08:00-14:00",
+        "operator": "Alpha Bank",
+        "ref": "014 0518",
+        "short_name": "Alpha",
+        "source": "Hellenic Bank Association"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/5209437293",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608707",
+      "osmType": "way",
+      "longitudeDeg": 26.302731980000004,
+      "latitudeDeg": 41.19354044,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608707",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608708",
+      "osmType": "way",
+      "longitudeDeg": 26.302745300000005,
+      "latitudeDeg": 41.193449779999995,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608708",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608701",
+      "osmType": "way",
+      "longitudeDeg": 26.30203936,
+      "latitudeDeg": 41.194559299999995,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608701",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/539930160",
+      "osmType": "way",
+      "longitudeDeg": 26.305043339999997,
+      "latitudeDeg": 41.19326629999999,
+      "category": "poi",
+      "tags": {
+        "addr:city": "Σουφλί",
+        "addr:housenumber": "146",
+        "addr:postcode": "68400",
+        "addr:street": "Βασιλέως Γεωργίου Β'",
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/539930160",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/11614901902",
+      "osmType": "node",
+      "longitudeDeg": 26.3059581,
+      "latitudeDeg": 41.1955693,
+      "name": "ΚΕΠ ΣΟΥΦΛΙΟΥ",
+      "category": "poi",
+      "tags": {
+        "addr:country": "GR",
+        "addr:housenumber": "180",
+        "addr:postcode": "68400",
+        "addr:street": "ΒΑΣΙΛΕΩΣ ΓΕΩΡΓΙΟΥ",
+        "contact:email": "d.soyfliou@kep.gov.gr",
+        "contact:phone": "+30 2554350116; +30 2554350134",
+        "contact:website": "https://www.kep.gov.gr/",
+        "name": "ΚΕΠ ΣΟΥΦΛΙΟΥ",
+        "name:el": "ΚΕΠ ΣΟΥΦΛΙΟΥ",
+        "office": "government",
+        "ref:GR:kepId": "0397"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/11614901902",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608715",
+      "osmType": "way",
+      "longitudeDeg": 26.302502742857143,
+      "latitudeDeg": 41.19357152857143,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608715",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608711",
+      "osmType": "way",
+      "longitudeDeg": 26.30223704,
+      "latitudeDeg": 41.19384882,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608711",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/14123880601",
+      "osmType": "node",
+      "longitudeDeg": 26.3060434,
+      "latitudeDeg": 41.1955863,
+      "name": "Δημαρχείο Σουφλίου",
+      "category": "public-service",
+      "tags": {
+        "addr:housenumber": "180",
+        "addr:postcode": "68400",
+        "addr:street": "Βασιλέως Γεωργίου Β'",
+        "amenity": "townhall",
+        "name": "Δημαρχείο Σουφλίου",
+        "phone": "+30 2554 350100",
+        "website": "http://soufli.gr"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/14123880601",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608712",
+      "osmType": "way",
+      "longitudeDeg": 26.3022202,
+      "latitudeDeg": 41.19378345714285,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608712",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608713",
+      "osmType": "way",
+      "longitudeDeg": 26.302280059999998,
+      "latitudeDeg": 41.193669899999996,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608713",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608721",
+      "osmType": "way",
+      "longitudeDeg": 26.302633959999998,
+      "latitudeDeg": 41.1932599,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608721",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608720",
+      "osmType": "way",
+      "longitudeDeg": 26.30241312222222,
+      "latitudeDeg": 41.19339462222222,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608720",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608714",
+      "osmType": "way",
+      "longitudeDeg": 26.302193439999996,
+      "latitudeDeg": 41.19363644,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608714",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608709",
+      "osmType": "way",
+      "longitudeDeg": 26.302031939999996,
+      "latitudeDeg": 41.193879679999995,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608709",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608727",
+      "osmType": "way",
+      "longitudeDeg": 26.3030303,
+      "latitudeDeg": 41.192880679999995,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608727",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/928172682",
+      "osmType": "way",
+      "longitudeDeg": 26.301671999999996,
+      "latitudeDeg": 41.195245320000005,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/928172682",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608728",
+      "osmType": "way",
+      "longitudeDeg": 26.30237921428571,
+      "latitudeDeg": 41.193186728571426,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608728",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608726",
+      "osmType": "way",
+      "longitudeDeg": 26.302975280000005,
+      "latitudeDeg": 41.192768060000006,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608726",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608723",
+      "osmType": "way",
+      "longitudeDeg": 26.302747439999997,
+      "latitudeDeg": 41.1928846,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608723",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/4913246222",
+      "osmType": "node",
+      "longitudeDeg": 26.3044039,
+      "latitudeDeg": 41.1925684,
+      "name": "Κινηματογράφος (πώην) ΗΛΙΟΣ",
+      "category": "poi",
+      "tags": {
+        "addr:housenumber": "114",
+        "addr:postcode": "68400",
+        "addr:street": "Βασιλέως Γεωργίου",
+        "amenity": "cinema",
+        "name": "Κινηματογράφος (πώην) ΗΛΙΟΣ",
+        "name:de": "Film (früher) SONNE",
+        "name:el": "Κινηματογράφος (πώην) ΗΛΙΟΣ",
+        "name:en": "Cinema ex \"HELIOS",
+        "name:tr": "Sinema (eski) GUNES  (SUN)"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/4913246222",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608688",
+      "osmType": "way",
+      "longitudeDeg": 26.301550080000005,
+      "latitudeDeg": 41.19466432,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608688",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608743",
+      "osmType": "way",
+      "longitudeDeg": 26.30254142857143,
+      "latitudeDeg": 41.1929847,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608743",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608750",
+      "osmType": "way",
+      "longitudeDeg": 26.301516100000004,
+      "latitudeDeg": 41.19522796,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608750",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608749",
+      "osmType": "way",
+      "longitudeDeg": 26.30151032857143,
+      "latitudeDeg": 41.19530952857143,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608749",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608722",
+      "osmType": "way",
+      "longitudeDeg": 26.302699299999993,
+      "latitudeDeg": 41.19284122,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608722",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608736",
+      "osmType": "way",
+      "longitudeDeg": 26.30251202,
+      "latitudeDeg": 41.19290516,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608736",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608751",
+      "osmType": "way",
+      "longitudeDeg": 26.301424759999996,
+      "latitudeDeg": 41.19524724,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608751",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608752",
+      "osmType": "way",
+      "longitudeDeg": 26.30141304,
+      "latitudeDeg": 41.1951042,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608752",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608724",
+      "osmType": "way",
+      "longitudeDeg": 26.302745614285715,
+      "latitudeDeg": 41.1927323,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608724",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608730",
+      "osmType": "way",
+      "longitudeDeg": 26.3021649,
+      "latitudeDeg": 41.193164720000006,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608730",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608729",
+      "osmType": "way",
+      "longitudeDeg": 26.302252485714284,
+      "latitudeDeg": 41.1930724,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608729",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608719",
+      "osmType": "way",
+      "longitudeDeg": 26.3018346,
+      "latitudeDeg": 41.19352054,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608719",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/928172681",
+      "osmType": "way",
+      "longitudeDeg": 26.301447179999997,
+      "latitudeDeg": 41.195712500000006,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/928172681",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608718",
+      "osmType": "way",
+      "longitudeDeg": 26.30166944285714,
+      "latitudeDeg": 41.19371761428572,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608718",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608725",
+      "osmType": "way",
+      "longitudeDeg": 26.30269447142857,
+      "latitudeDeg": 41.19267691428571,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608725",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608737",
+      "osmType": "way",
+      "longitudeDeg": 26.30241306,
+      "latitudeDeg": 41.192837759999996,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608737",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608740",
+      "osmType": "way",
+      "longitudeDeg": 26.30204534,
+      "latitudeDeg": 41.193140799999995,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608740",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608734",
+      "osmType": "way",
+      "longitudeDeg": 26.30218724285714,
+      "latitudeDeg": 41.19292968571428,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608734",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608754",
+      "osmType": "way",
+      "longitudeDeg": 26.301228079999998,
+      "latitudeDeg": 41.19497072,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608754",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608739",
+      "osmType": "way",
+      "longitudeDeg": 26.301919880000003,
+      "latitudeDeg": 41.193166340000005,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608739",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608717",
+      "osmType": "way",
+      "longitudeDeg": 26.301576599999997,
+      "latitudeDeg": 41.19357058,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608717",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608741",
+      "osmType": "way",
+      "longitudeDeg": 26.30180512,
+      "latitudeDeg": 41.19315926,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608741",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608687",
+      "osmType": "way",
+      "longitudeDeg": 26.30115786,
+      "latitudeDeg": 41.194599999999994,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608687",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608733",
+      "osmType": "way",
+      "longitudeDeg": 26.3021275,
+      "latitudeDeg": 41.19282325714285,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608733",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608731",
+      "osmType": "way",
+      "longitudeDeg": 26.3019678,
+      "latitudeDeg": 41.19295514,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608731",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608735",
+      "osmType": "way",
+      "longitudeDeg": 26.302299457142855,
+      "latitudeDeg": 41.19261352857143,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608735",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608753",
+      "osmType": "way",
+      "longitudeDeg": 26.301064588888888,
+      "latitudeDeg": 41.19515825555556,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608753",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608742",
+      "osmType": "way",
+      "longitudeDeg": 26.301657314285716,
+      "latitudeDeg": 41.19315742857143,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608742",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608732",
+      "osmType": "way",
+      "longitudeDeg": 26.301785044444447,
+      "latitudeDeg": 41.19298945555556,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608732",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608738",
+      "osmType": "way",
+      "longitudeDeg": 26.30206192,
+      "latitudeDeg": 41.192604059999994,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608738",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/928172679",
+      "osmType": "way",
+      "longitudeDeg": 26.30096586,
+      "latitudeDeg": 41.1956274,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/928172679",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608684",
+      "osmType": "way",
+      "longitudeDeg": 26.300895660000002,
+      "latitudeDeg": 41.19493193999999,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608684",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/928172678",
+      "osmType": "way",
+      "longitudeDeg": 26.300918866666667,
+      "latitudeDeg": 41.19544691111111,
+      "name": "Ιερός Ναός Αγίου Γεωργίου",
+      "category": "poi",
+      "tags": {
+        "amenity": "place_of_worship",
+        "building": "church",
+        "denomination": "greek_orthodox",
+        "name": "Ιερός Ναός Αγίου Γεωργίου",
+        "religion": "christian"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/928172678",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/928172680",
+      "osmType": "way",
+      "longitudeDeg": 26.30099432,
+      "latitudeDeg": 41.19582872,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/928172680",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608686",
+      "osmType": "way",
+      "longitudeDeg": 26.30090216666667,
+      "latitudeDeg": 41.19460595,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608686",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608683",
+      "osmType": "way",
+      "longitudeDeg": 26.30084394,
+      "latitudeDeg": 41.19522582,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608683",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608685",
+      "osmType": "way",
+      "longitudeDeg": 26.300665220000003,
+      "latitudeDeg": 41.19497478000001,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608685",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608653",
+      "osmType": "way",
+      "longitudeDeg": 26.300749739999997,
+      "latitudeDeg": 41.195759020000004,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608653",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608745",
+      "osmType": "way",
+      "longitudeDeg": 26.300654759999997,
+      "latitudeDeg": 41.195127480000004,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608745",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "node/8765634039",
+      "osmType": "node",
+      "longitudeDeg": 26.3006499,
+      "latitudeDeg": 41.194439,
+      "name": "Μουσείο Μετάξης",
+      "category": "poi",
+      "tags": {
+        "building": "yes",
+        "name": "Μουσείο Μετάξης"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/node/8765634039",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608657",
+      "osmType": "way",
+      "longitudeDeg": 26.30058978571429,
+      "latitudeDeg": 41.19552551428571,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608657",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608746",
+      "osmType": "way",
+      "longitudeDeg": 26.300516700000003,
+      "latitudeDeg": 41.195145950000004,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608746",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608656",
+      "osmType": "way",
+      "longitudeDeg": 26.300537414285714,
+      "latitudeDeg": 41.19544478571429,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608656",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608748",
+      "osmType": "way",
+      "longitudeDeg": 26.300530880000004,
+      "latitudeDeg": 41.195616740000006,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608748",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608700",
+      "osmType": "way",
+      "longitudeDeg": 26.300476879999998,
+      "latitudeDeg": 41.1948113,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608700",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608655",
+      "osmType": "way",
+      "longitudeDeg": 26.30048458,
+      "latitudeDeg": 41.1953699,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608655",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/721035231",
+      "osmType": "way",
+      "longitudeDeg": 26.30612814,
+      "latitudeDeg": 41.19215228,
+      "category": "poi",
+      "tags": {
+        "leisure": "pitch",
+        "sport": "tennis"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/721035231",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608699",
+      "osmType": "way",
+      "longitudeDeg": 26.300449328571432,
+      "latitudeDeg": 41.194729957142854,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608699",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608672",
+      "osmType": "way",
+      "longitudeDeg": 26.300330159999998,
+      "latitudeDeg": 41.19460936,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608672",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608673",
+      "osmType": "way",
+      "longitudeDeg": 26.300316285714285,
+      "latitudeDeg": 41.194724028571436,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608673",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608681",
+      "osmType": "way",
+      "longitudeDeg": 26.30031626,
+      "latitudeDeg": 41.195278619999996,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608681",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608747",
+      "osmType": "way",
+      "longitudeDeg": 26.3002634,
+      "latitudeDeg": 41.19545538,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608747",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608654",
+      "osmType": "way",
+      "longitudeDeg": 26.300274960000003,
+      "latitudeDeg": 41.19581382,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608654",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608671",
+      "osmType": "way",
+      "longitudeDeg": 26.300202919999997,
+      "latitudeDeg": 41.194559399999996,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608671",
+      "provider": "OpenStreetMap"
+    },
+    {
+      "id": "way/1265608682",
+      "osmType": "way",
+      "longitudeDeg": 26.30017148,
+      "latitudeDeg": 41.195289460000005,
+      "category": "poi",
+      "tags": {
+        "building": "yes"
+      },
+      "sourceUrl": "https://www.openstreetmap.org/way/1265608682",
+      "provider": "OpenStreetMap"
+    }
+  ],
+  "queriedAt": "2026-11-15T15:24:58.996Z",
+  "provider": "OpenStreetMap",
+  "service": "OpenStreetMap map API snapshot; runtime query uses Overpass API"
+}
