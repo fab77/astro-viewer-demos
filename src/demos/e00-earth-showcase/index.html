@@ -103,7 +103,8 @@
       }
 
       #scene-intro[hidden],
-      #caption[hidden] {
+      #caption[hidden],
+      #closing-panel[hidden] {
         display: none;
       }
 
@@ -157,8 +158,136 @@
         width: min(520px, calc(100vw - 56px));
       }
 
+      #closing-panel {
+        position: absolute;
+        top: 48%;
+        left: 50%;
+        z-index: 10;
+        width: min(980px, calc(100vw - 80px));
+        min-height: 390px;
+        padding: 30px 34px;
+        transform: translate(-50%, -50%);
+        border: 1px solid rgba(97, 185, 255, 0.48);
+        border-radius: 16px;
+        background: rgba(4, 21, 43, 0.96);
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.48);
+        text-align: center;
+        transition: opacity 320ms ease, transform 320ms ease;
+      }
+
+      #closing-panel[data-switching="true"] {
+        opacity: 0;
+        transform: translate(-50%, -47%);
+      }
+
+      #closing-panel .panel-eyebrow {
+        margin: 0 0 9px;
+        color: #83d5ff;
+        font-size: 13px;
+        font-weight: 750;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+
+      #closing-panel h2 {
+        margin: 0;
+        font-size: clamp(28px, 3vw, 43px);
+        letter-spacing: -0.035em;
+      }
+
+      #closing-panel .panel-subtitle {
+        margin: 12px auto 24px;
+        max-width: 720px;
+        color: #b7cbe0;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .provenance-grid,
+      .architecture-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+        text-align: left;
+      }
+
+      .closing-card,
+      .architecture-node {
+        padding: 20px 22px;
+        border: 1px solid rgba(97, 185, 255, 0.32);
+        border-radius: 10px;
+        background: #102a45;
+      }
+
+      .closing-card h3,
+      .architecture-node strong {
+        display: block;
+        margin: 0 0 10px;
+        color: #72c8ff;
+        font-size: 14px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .closing-card p,
+      .architecture-node span {
+        display: block;
+        margin: 0;
+        color: #c1d2e2;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .architecture-demo {
+        width: min(380px, 72%);
+        margin: 0 auto;
+        border-color: rgba(23, 181, 167, 0.8);
+        text-align: center;
+      }
+
+      .architecture-connector {
+        height: 34px;
+        color: #71c6ff;
+        font-size: 23px;
+        line-height: 34px;
+      }
+
+      .architecture-node.viewer {
+        border: 2px solid #17b5a7;
+      }
+
+      .architecture-node.services {
+        border-style: dashed;
+      }
+
+      .architecture-core {
+        width: min(620px, 82%);
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      @media (max-width: 760px) {
+        #closing-panel {
+          width: calc(100vw - 36px);
+          min-height: 0;
+          padding: 22px;
+        }
+
+        .provenance-grid,
+        .architecture-pair {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #closing-panel {
+          transition: none;
+        }
+      }
+
       #satellite-legend,
-      #maritime-legend {
+      #maritime-legend,
+      #scientific-legend {
         position: absolute;
         left: 28px;
         bottom: 28px;
@@ -176,6 +305,7 @@
 
       #satellite-legend[hidden],
       #maritime-legend[hidden],
+      #scientific-legend[hidden],
       #observation-metadata[hidden],
       #layer-stack[hidden],
       #saved-contexts[hidden],
@@ -275,6 +405,12 @@
         background: rgba(77, 184, 255, 0.13);
       }
 
+      .context-row[data-pressed="true"],
+      .context-delete[data-pressed="true"] {
+        filter: brightness(1.35);
+        transform: scale(0.985);
+      }
+
       #observation-metadata {
         position: absolute;
         right: 28px;
@@ -287,6 +423,22 @@
         background: rgba(2, 18, 42, 0.94);
         box-shadow: 0 16px 50px rgba(0, 0, 0, 0.34);
         pointer-events: none;
+      }
+
+      #scientific-legend {
+        top: 23px;
+        right: 28px;
+        bottom: auto;
+        left: auto;
+        width: min(390px, calc(100vw - 56px));
+      }
+
+      #scientific-legend h3 {
+        margin: 0 0 8px;
+        color: #70c7ff;
+        font-size: 11px;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
       }
 
       .observation-record {
@@ -349,6 +501,11 @@
         height: 10px;
         border: 1px solid #ffffff;
         background: rgba(255, 255, 255, 0.45);
+      }
+
+      #scientific-legend .legend-swatch {
+        height: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.38);
       }
 
       #demo-pointer {
@@ -547,6 +704,8 @@
         <p hidden></p>
       </div>
 
+      <section id="closing-panel" hidden aria-live="polite"></section>
+
       <aside id="satellite-legend" hidden>
         <div class="legend-row"><span class="legend-swatch regions"></span>Spanish administrative regions</div>
         <div class="legend-row"><span class="legend-swatch track"></span>Satellite ground-track projection</div>
@@ -558,6 +717,11 @@
       <aside id="maritime-legend" hidden>
         <div class="legend-row"><span class="legend-swatch all-year"></span>All-year ferry service</div>
         <div class="legend-row"><span class="legend-swatch seasonal"></span>Seasonal ferry service</div>
+      </aside>
+
+      <aside id="scientific-legend" hidden>
+        <h3 id="scientific-legend-title"></h3>
+        <div id="scientific-legend-rows"></div>
       </aside>
 
       <aside id="observation-metadata" hidden aria-live="polite"></aside>
@@ -602,6 +766,7 @@
 
       <aside id="telemetry">
         <div id="coordinate-status">Center: —</div>
+        <div id="mouse-coordinate-status" hidden>Mouse: —</div>
         <div id="fov-status">FoV: —</div>
         <div id="tile-status">Tiles: —</div>
       </aside>
