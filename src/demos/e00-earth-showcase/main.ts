@@ -7,6 +7,9 @@ import {
   MetadataColumn,
   MetadataManager,
   ObservationTrackViewerAdapter,
+  type CatalogueGL,
+  type Footprint,
+  type Source,
   type TerraFootprintSetGL,
   type CameraChangedDetail,
   type ObservationTrackFrame,
@@ -18,8 +21,20 @@ import {
   type ResolvedPlace,
 } from "astrospatial-services/earth/name-resolver";
 import {
+  OpenStreetMapOverpassService,
+  type OpenStreetMapInfrastructureFeature,
+  type OpenStreetMapInfrastructureResult,
+} from "astrospatial-services/earth/openstreetmap";
+import {
+  CemsRapidMappingService,
+  type CemsFloodLayerResult,
+} from "astrospatial-services/earth/emergency";
+import {
   FirmsService,
+  GwisBurnedAreaService,
+  type BurnedAreaPerimeter,
   type FirmsAreaResult,
+  type GwisBurnedAreaResult,
   type WildfireDetection,
 } from "astrospatial-services/earth/wildfire";
 
@@ -46,7 +61,10 @@ const headline = get<HTMLElement>("headline");
 const detail = get<HTMLElement>("detail");
 const apiCommand = get<HTMLElement>("api-command");
 const provenance = get<HTMLElement>("provenance-content");
+const provenancePanel = get<HTMLElement>("provenance");
+const telemetryPanel = get<HTMLElement>("telemetry");
 const coordinateStatus = get<HTMLElement>("coordinate-status");
+const mouseCoordinateStatus = get<HTMLElement>("mouse-coordinate-status");
 const fovStatus = get<HTMLElement>("fov-status");
 const tileStatus = get<HTMLElement>("tile-status");
 const loadingIndicator = get<HTMLElement>("loading-indicator");
@@ -56,9 +74,13 @@ const runButton = get<HTMLButtonElement>("run-button");
 const pauseButton = get<HTMLButtonElement>("pause-button");
 const resetButton = get<HTMLButtonElement>("reset-button");
 const credits = get<HTMLIFrameElement>("credits");
+const closingPanel = get<HTMLElement>("closing-panel");
 const coordsGridLabels = get<HTMLDivElement>("coords-grid-labels");
 const satelliteLegend = get<HTMLElement>("satellite-legend");
 const maritimeLegend = get<HTMLElement>("maritime-legend");
+const scientificLegend = get<HTMLElement>("scientific-legend");
+const scientificLegendTitle = get<HTMLElement>("scientific-legend-title");
+const scientificLegendRows = get<HTMLElement>("scientific-legend-rows");
 const observationMetadata = get<HTMLElement>("observation-metadata");
 const layerStack = get<HTMLElement>("layer-stack");
 const layerStackRows = get<HTMLElement>("layer-stack-rows");
@@ -69,17 +91,17 @@ document.body.appendChild(demoPointer);
 
 const query = new URLSearchParams(location.search);
 const mode = query.get("mode") === "video" ? "video" : "interactive";
-type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
+type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 const initialScene = Number(query.get("scene"));
 const requestedScene: SceneNumber =
-  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 14
+  Number.isInteger(initialScene) && initialScene >= 1 && initialScene <= 15
     ? (initialScene as SceneNumber)
     : 1;
 const initialEndScene = Number(query.get("end"));
 const requestedEndScene: SceneNumber | null =
   Number.isInteger(initialEndScene) &&
   initialEndScene >= requestedScene &&
-  initialEndScene <= 14
+  initialEndScene <= 15
     ? (initialEndScene as SceneNumber)
     : null;
 
@@ -169,22 +191,57 @@ const openStreetMap = {
   attribution: "© OpenStreetMap contributors",
 };
 
-const worldCapitals = [
-  [-77.0369, 38.9072, "Washington, D.C.", "United States", 0.7],
-  [-99.1332, 19.4326, "Mexico City", "Mexico", 9.2],
-  [-47.8825, -15.7942, "Brasília", "Brazil", 2.8],
-  [-58.3816, -34.6037, "Buenos Aires", "Argentina", 3.1],
+const europeanCapitals = [
+  [19.8187, 41.3275, "Tirana", "Albania", 0.6],
+  [1.5218, 42.5063, "Andorra la Vella", "Andorra", 0.023],
+  [16.3738, 48.2082, "Vienna", "Austria", 2.0],
+  [23.7275, 37.9838, "Athens", "Greece", 0.64],
+  [49.8671, 40.4093, "Baku", "Azerbaijan", 2.3],
+  [27.5615, 53.9045, "Minsk", "Belarus", 2.0],
+  [4.3517, 50.8503, "Brussels", "Belgium", 1.2],
+  [18.4131, 43.8563, "Sarajevo", "Bosnia and Herzegovina", 0.28],
+  [23.3219, 42.6977, "Sofia", "Bulgaria", 1.3],
+  [15.9819, 45.8150, "Zagreb", "Croatia", 0.77],
+  [33.3823, 35.1856, "Nicosia", "Cyprus", 0.33],
+  [14.4378, 50.0755, "Prague", "Czechia", 1.4],
+  [12.5683, 55.6761, "Copenhagen", "Denmark", 0.66],
+  [24.7536, 59.4370, "Tallinn", "Estonia", 0.46],
+  [24.9384, 60.1699, "Helsinki", "Finland", 0.68],
   [-0.1276, 51.5072, "London", "United Kingdom", 8.9],
   [2.3522, 48.8566, "Paris", "France", 2.1],
-  [-3.7038, 40.4168, "Madrid", "Spain", 3.3],
+  [13.4050, 52.5200, "Berlin", "Germany", 3.9],
+  [44.8271, 41.7151, "Tbilisi", "Georgia", 1.2],
+  [19.0402, 47.4979, "Budapest", "Hungary", 1.7],
+  [-21.9426, 64.1466, "Reykjavík", "Iceland", 0.14],
+  [-6.2603, 53.3498, "Dublin", "Ireland", 0.59],
   [12.4964, 41.9028, "Rome", "Italy", 2.8],
-  [31.2357, 30.0444, "Cairo", "Egypt", 10.2],
-  [36.8219, -1.2921, "Nairobi", "Kenya", 4.4],
-  [28.0473, -26.2041, "Pretoria", "South Africa", 0.8],
-  [77.2090, 28.6139, "New Delhi", "India", 11.0],
-  [116.4074, 39.9042, "Beijing", "China", 21.9],
-  [139.6917, 35.6895, "Tokyo", "Japan", 14.0],
-  [151.2093, -33.8688, "Canberra", "Australia", 0.5],
+  [21.1655, 42.6629, "Pristina", "Kosovo", 0.23],
+  [24.1052, 56.9496, "Riga", "Latvia", 0.61],
+  [9.5209, 47.1410, "Vaduz", "Liechtenstein", 0.006],
+  [25.2797, 54.6872, "Vilnius", "Lithuania", 0.61],
+  [6.1319, 49.6116, "Luxembourg", "Luxembourg", 0.14],
+  [14.5146, 35.8989, "Valletta", "Malta", 0.006],
+  [28.8353, 47.0105, "Chișinău", "Moldova", 0.53],
+  [7.4246, 43.7384, "Monaco", "Monaco", 0.039],
+  [19.2629, 42.4304, "Podgorica", "Montenegro", 0.18],
+  [4.9041, 52.3676, "Amsterdam", "Netherlands", 0.93],
+  [21.4316, 41.9981, "Skopje", "North Macedonia", 0.53],
+  [10.7522, 59.9139, "Oslo", "Norway", 0.72],
+  [21.0122, 52.2297, "Warsaw", "Poland", 1.86],
+  [-9.1393, 38.7223, "Lisbon", "Portugal", 0.57],
+  [26.1025, 44.4268, "Bucharest", "Romania", 1.72],
+  [37.6173, 55.7558, "Moscow", "Russia", 13.0],
+  [12.4578, 43.9424, "San Marino", "San Marino", 0.004],
+  [20.4489, 44.7866, "Belgrade", "Serbia", 1.2],
+  [17.1077, 48.1486, "Bratislava", "Slovakia", 0.48],
+  [14.5058, 46.0569, "Ljubljana", "Slovenia", 0.30],
+  [-3.7038, 40.4168, "Madrid", "Spain", 3.3],
+  [18.0686, 59.3293, "Stockholm", "Sweden", 0.99],
+  [7.4474, 46.9480, "Bern", "Switzerland", 0.15],
+  [32.8597, 39.9334, "Ankara", "Türkiye", 5.8],
+  [30.5234, 50.4501, "Kyiv", "Ukraine", 3.0],
+  [12.4534, 41.9029, "Vatican City", "Vatican City", 0.0008],
+  [44.5152, 40.1872, "Yerevan", "Armenia", 1.1],
 ] as const;
 
 const placeResolver = new NominatimService({
@@ -203,6 +260,11 @@ const firmsService = new FirmsService({
   endpoint: new URL("/api/firms/", location.origin).href,
   timeoutMs: 120_000,
 });
+const gwisBurnedAreaService = new GwisBurnedAreaService({ timeoutMs: 120_000 });
+const cemsRapidMappingService = new CemsRapidMappingService({ timeoutMs: 120_000 });
+const openStreetMapOverpassService = new OpenStreetMapOverpassService({
+  timeoutMs: 8_000,
+});
 
 const italyCitiesUrl = new URL("./data/italy-cities.geojson", import.meta.url).href;
 const italyRegionsUrl = new URL("./data/italy-regions.geojson", import.meta.url).href;
@@ -213,6 +275,18 @@ const mediterraneanFerryRoutesUrl = new URL(
 ).href;
 const firmsAfricaSnapshotUrl = new URL(
   "./data/firms-africa-2026-08-25.json",
+  import.meta.url,
+).href;
+const gwisAfricaSnapshotUrl = new URL(
+  "./data/gwis-africa-2026-08-25.json",
+  import.meta.url,
+).href;
+const cemsEvrosSnapshotUrl = new URL(
+  "./data/cems-evros-2026-02.json",
+  import.meta.url,
+).href;
+const osmSoufliInfrastructureSnapshotUrl = new URL(
+  "./data/osm-soufli-infrastructure.json",
   import.meta.url,
 ).href;
 const satelliteModelUrl = new URL(
@@ -263,6 +337,85 @@ async function loadFirmsSnapshot(): Promise<FirmsSnapshot> {
   return (await response.json()) as FirmsSnapshot;
 }
 
+type GwisSnapshot = Omit<GwisBurnedAreaResult, "perimeters"> & {
+  schemaVersion: number;
+  generatedAt: string;
+  sourceUrl: string;
+  selection: {
+    method: string;
+    inputPerimeterCount: number;
+    outputPerimeterCount: number;
+  };
+  perimeters: BurnedAreaPerimeter[];
+};
+
+async function loadGwisSnapshot(): Promise<GwisSnapshot> {
+  const response = await fetch(gwisAfricaSnapshotUrl);
+  if (!response.ok) {
+    throw new Error(`Unable to load GWIS snapshot: ${response.status}`);
+  }
+  return (await response.json()) as GwisSnapshot;
+}
+
+type CemsSnapshot = {
+  schemaVersion: number;
+  generatedAt: string;
+  sourceUrl: string;
+  activation: {
+    code: string;
+    name: string;
+    category: string;
+    subCategory?: string;
+    eventAt: string;
+    countries: string[];
+    provider: "Copernicus EMS Rapid Mapping";
+  };
+  maximumExtent: CemsFloodLayerResult;
+  latestObservedExtent: CemsFloodLayerResult;
+  floodDepth: CemsFloodLayerResult;
+};
+
+async function loadCemsSnapshot(): Promise<CemsSnapshot> {
+  const response = await fetch(cemsEvrosSnapshotUrl);
+  if (!response.ok) {
+    throw new Error(`Unable to load CEMS snapshot: ${response.status}`);
+  }
+  return (await response.json()) as CemsSnapshot;
+}
+
+type OpenStreetMapInfrastructureSnapshot = OpenStreetMapInfrastructureResult & {
+  schemaVersion: number;
+  generatedAt: string;
+  sourceUrl: string;
+};
+
+async function loadOpenStreetMapInfrastructureSnapshot(): Promise<OpenStreetMapInfrastructureSnapshot> {
+  const response = await fetch(osmSoufliInfrastructureSnapshotUrl);
+  if (!response.ok) {
+    throw new Error(`Unable to load OpenStreetMap infrastructure snapshot: ${response.status}`);
+  }
+  return (await response.json()) as OpenStreetMapInfrastructureSnapshot;
+}
+
+function burnedAreaGeoJSON(perimeters: BurnedAreaPerimeter[]): GeoJSONFeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: perimeters.map((perimeter) => ({
+      type: "Feature",
+      id: perimeter.id,
+      properties: {
+        fireId: perimeter.fireId,
+        initialAt: perimeter.initialAt,
+        finalAt: perimeter.finalAt,
+        areaHa: perimeter.areaHa,
+        product: perimeter.product,
+        provider: perimeter.provider,
+      },
+      geometry: perimeter.geometry,
+    })),
+  };
+}
+
 function satelliteFootprint(longitudeDeg: number, latitudeDeg: number) {
   const longitudeRadius = 1.25 / Math.max(0.45, Math.cos(latitudeDeg * Math.PI / 180));
   const latitudeRadius = 1;
@@ -303,6 +456,7 @@ function clearSatelliteObservation(): void {
     viewer.deleteTerraFootprintSet(satelliteRegionsLayer);
   }
   if (satelliteAcquiredImagesLayer) {
+    footprintInteractionBindings.delete(satelliteAcquiredImagesLayer);
     viewer.deleteTerraFootprintSet(satelliteAcquiredImagesLayer);
   }
   satelliteHandle = null;
@@ -340,9 +494,64 @@ function dispatchPointer(x: number, y: number): void {
   }));
 }
 
+async function clickDemoPointer(token: number): Promise<void> {
+  const rect = canvas.getBoundingClientRect();
+  const eventInit = {
+    bubbles: true,
+    cancelable: true,
+    pointerId: 1,
+    pointerType: "mouse",
+    isPrimary: true,
+    button: 0,
+    clientX: rect.left + pointerPosition.x,
+    clientY: rect.top + pointerPosition.y,
+  };
+  canvas.dispatchEvent(new PointerEvent("pointerdown", {
+    ...eventInit,
+    buttons: 1,
+  }));
+  await wait(70, token);
+  canvas.dispatchEvent(new PointerEvent("pointerup", {
+    ...eventInit,
+    buttons: 0,
+  }));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+async function clickInterfaceElement(
+  element: HTMLElement,
+  token: number,
+): Promise<void> {
+  const bounds = element.getBoundingClientRect();
+  const eventInit = {
+    bubbles: true,
+    cancelable: true,
+    pointerId: 1,
+    pointerType: "mouse",
+    isPrimary: true,
+    button: 0,
+    clientX: bounds.left + bounds.width / 2,
+    clientY: bounds.top + bounds.height / 2,
+  };
+  element.dispatchEvent(new PointerEvent("pointerdown", {
+    ...eventInit,
+    buttons: 1,
+  }));
+  element.dataset.pressed = "true";
+  await wait(90, token);
+  element.dispatchEvent(new PointerEvent("pointerup", {
+    ...eventInit,
+    buttons: 0,
+  }));
+  element.dispatchEvent(new MouseEvent("click", eventInit));
+  delete element.dataset.pressed;
+  await wait(140, token);
+}
+
 async function animatePointer(
   target: { x: number; y: number },
   token: number,
+  onMove?: () => void,
 ): Promise<void> {
   const from = pointerPosition;
   demoPointer.hidden = false;
@@ -356,9 +565,180 @@ async function animatePointer(
     placeDemoPointer(x, y);
     dispatchPointer(x, y);
     await wait(22, token);
+    onMove?.();
   }
   pointerPosition = target;
 }
+
+function showScientificLegend(
+  title: string,
+  entries: Array<{ label: string; color: string }>,
+): void {
+  scientificLegendTitle.textContent = title;
+  scientificLegendRows.replaceChildren(...entries.map(({ label, color }) => {
+    const row = document.createElement("div");
+    row.className = "legend-row";
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    swatch.style.background = color;
+    const text = document.createElement("span");
+    text.textContent = label;
+    row.append(swatch, text);
+    return row;
+  }));
+  scientificLegend.hidden = false;
+}
+
+function hideScientificLegend(): void {
+  scientificLegend.hidden = true;
+  scientificLegendTitle.textContent = "";
+  scientificLegendRows.replaceChildren();
+}
+
+type CatalogueInteractionBinding = {
+  id: string;
+  layer: CatalogueGL;
+  records: readonly unknown[];
+  render: (record: unknown, state: "hover" | "selected") => void;
+};
+
+type FootprintInteractionBinding = {
+  id: string;
+  layer: TerraFootprintSetGL;
+  records: readonly unknown[];
+  render: (record: unknown, state: "hover" | "selected") => void;
+};
+
+const catalogueInteractionBindings = new Map<CatalogueGL, CatalogueInteractionBinding>();
+const footprintInteractionBindings = new Map<TerraFootprintSetGL, FootprintInteractionBinding>();
+let footprintHoverFrame = 0;
+let interactionEventsSuspended = false;
+let hoveredSourceActive = false;
+
+function clearHoverMetadata(): void {
+  observationMetadata.querySelector('[data-state="hover"]')?.remove();
+  if (!observationMetadata.childElementCount) {
+    observationMetadata.hidden = true;
+  }
+}
+
+function interactionCardKey(bindingId: string, index: number): string {
+  return `${bindingId}:${index}`;
+}
+
+function removeInteractionCard(key: string, state: "hover" | "selected"): void {
+  for (const card of observationMetadata.querySelectorAll<HTMLElement>(
+    `[data-state="${state}"]`,
+  )) {
+    if (card.dataset.interactionKey === key) card.remove();
+  }
+  if (!observationMetadata.childElementCount) observationMetadata.hidden = true;
+}
+
+function renderInteractionCard(
+  binding: CatalogueInteractionBinding | FootprintInteractionBinding,
+  index: number,
+  state: "hover" | "selected",
+): void {
+  const record = binding.records[index];
+  if (record === undefined) return;
+  const key = interactionCardKey(binding.id, index);
+  removeInteractionCard(key, state);
+  binding.render(record, state);
+  const cards = observationMetadata.querySelectorAll<HTMLElement>(`[data-state="${state}"]`);
+  const card = state === "hover" ? cards[0] : cards[cards.length - 1];
+  if (card) card.dataset.interactionKey = key;
+}
+
+function registerCatalogueInteraction<T>(
+  id: string,
+  layer: CatalogueGL,
+  records: readonly T[],
+  render: (record: T, state: "hover" | "selected") => void,
+): void {
+  catalogueInteractionBindings.set(layer, {
+    id,
+    layer,
+    records,
+    render: (record, state) => render(record as T, state),
+  });
+}
+
+function registerFootprintInteraction<T>(
+  id: string,
+  layer: TerraFootprintSetGL,
+  records: readonly T[],
+  render: (record: T, state: "hover" | "selected") => void,
+): void {
+  footprintInteractionBindings.set(layer, {
+    id,
+    layer,
+    records,
+    render: (record, state) => render(record as T, state),
+  });
+}
+
+function refreshFootprintHoverMetadata(): void {
+  footprintHoverFrame = 0;
+  if (interactionEventsSuspended) return;
+  for (const binding of footprintInteractionBindings.values()) {
+    const footprint = binding.layer.hoveredFootprints.footprints[0];
+    if (!footprint) continue;
+    const index = binding.layer.footprintPolygons.indexOf(footprint);
+    if (index >= 0) {
+      clearHoverMetadata();
+      renderInteractionCard(binding, index, "hover");
+    }
+    break;
+  }
+  const footprintIsHovered = [...footprintInteractionBindings.values()].some(
+    ({ layer }) => layer.hoveredFootprints.footprints.length > 0,
+  );
+  if (!footprintIsHovered && !hoveredSourceActive) clearHoverMetadata();
+}
+
+function scheduleFootprintHoverMetadata(): void {
+  if (interactionEventsSuspended || footprintHoverFrame) return;
+  footprintHoverFrame = requestAnimationFrame(refreshFootprintHoverMetadata);
+}
+
+canvas.addEventListener("pointermove", scheduleFootprintHoverMetadata);
+canvas.addEventListener("pointerleave", () => {
+  hoveredSourceActive = false;
+  clearHoverMetadata();
+});
+canvas.addEventListener("source-hovered", ((event: CustomEvent) => {
+  if (interactionEventsSuspended) return;
+  hoveredSourceActive = Boolean(event.detail?.source);
+  clearHoverMetadata();
+  const binding = catalogueInteractionBindings.get(event.detail?.catalogue);
+  const source = event.detail?.source as Source | null;
+  if (!binding || !source) return;
+  const index = binding.layer.sources.indexOf(source);
+  if (index >= 0) renderInteractionCard(binding, index, "hover");
+}) as EventListener);
+canvas.addEventListener("source-clicked", ((event: CustomEvent) => {
+  const binding = catalogueInteractionBindings.get(event.detail?.catalogue);
+  if (!binding) return;
+  for (const item of event.detail?.selectionState ?? []) {
+    const index = binding.layer.sources.indexOf(item.source as Source);
+    if (index < 0) continue;
+    const key = interactionCardKey(binding.id, index);
+    if (item.selected) renderInteractionCard(binding, index, "selected");
+    else removeInteractionCard(key, "selected");
+  }
+}) as EventListener);
+canvas.addEventListener("footprint-clicked", ((event: CustomEvent) => {
+  const binding = footprintInteractionBindings.get(event.detail?.footprintSet);
+  if (!binding) return;
+  for (const item of event.detail?.selectionState ?? []) {
+    const index = binding.layer.footprintPolygons.indexOf(item.footprint as Footprint);
+    if (index < 0) continue;
+    const key = interactionCardKey(binding.id, index);
+    if (item.selected) renderInteractionCard(binding, index, "selected");
+    else removeInteractionCard(key, "selected");
+  }
+}) as EventListener);
 
 function multiplyMatVec(matrix: Float32Array, vector: readonly number[]): number[] {
   return [0, 1, 2, 3].map(
@@ -429,13 +809,19 @@ async function findFootprintHoverPoint(
     };
   }).sort((left, right) => left.distanceFromCentre - right.distanceFromCentre);
 
-  for (const candidate of candidates) {
-    check(token);
-    dispatchPointer(candidate.x, candidate.y);
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    if (layer.hoveredFootprints.footprints.includes(footprint)) {
-      return { x: candidate.x, y: candidate.y };
+  const wasSuspended = interactionEventsSuspended;
+  interactionEventsSuspended = true;
+  try {
+    for (const candidate of candidates) {
+      check(token);
+      dispatchPointer(candidate.x, candidate.y);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (layer.hoveredFootprints.footprints.includes(footprint)) {
+        return { x: candidate.x, y: candidate.y };
+      }
     }
+  } finally {
+    interactionEventsSuspended = wasSuspended;
   }
 
   audit.warnings.push("Unable to find an interior hover point for a regional footprint");
@@ -460,6 +846,9 @@ function showObservationMetadata(
   const title = document.createElement("strong");
   title.textContent = String(values.get("obs_id") ?? "Satellite observation");
   card.append(title);
+  const dataset = document.createElement("span");
+  dataset.textContent = "AstroViewer dataset: Acquired satellite images";
+  card.append(dataset);
   for (const [label, key] of [
     ["Target", "target"],
     ["Sensor", "sensor"],
@@ -598,6 +987,7 @@ function showCapitalMetadata(
   weather: Awaited<ReturnType<typeof fetchCurrentWeather>> | null,
   resolvedPlace: ResolvedPlace | null,
   wikipedia: Awaited<ReturnType<typeof fetchWikipediaSummary>> | null,
+  datasetName: string,
   state: "hover" | "selected",
 ): void {
   if (state === "hover") {
@@ -610,9 +1000,13 @@ function showCapitalMetadata(
   title.textContent = `${name}, ${country}`;
   const current = weather?.current;
   const units = weather?.current_units ?? {};
+  const populationLabel = populationMillions >= 0.1
+    ? `about ${populationMillions.toFixed(1)} million`
+    : `about ${Math.max(1, Math.round(populationMillions * 1000))} thousand`;
   const lines = [
+    `AstroViewer dataset: ${datasetName}`,
     `Coordinates: ${longitude.toFixed(4)}°, ${latitude.toFixed(4)}°`,
-    `Population: about ${populationMillions.toFixed(1)} million (illustrative estimate)`,
+    `Population: ${populationLabel} (illustrative estimate)`,
     `Resolved place: ${resolvedPlace?.label ?? "runtime resolver unavailable"}`,
     `Temperature: ${current?.temperature_2m ?? "unavailable"}${current?.temperature_2m != null ? (units.temperature_2m ?? "°C") : ""}`,
     `Wind: ${current?.wind_speed_10m ?? "unavailable"}${current?.wind_speed_10m != null ? ` ${units.wind_speed_10m ?? "km/h"}` : ""}`,
@@ -635,6 +1029,7 @@ function showRegionMetadata(
   country: string,
   population: string,
   sourceProperties: Record<string, unknown>,
+  datasetName: string,
   state: "hover" | "selected",
 ): void {
   if (state === "hover") {
@@ -647,6 +1042,7 @@ function showRegionMetadata(
   title.textContent = `${name}, ${country}`;
   const lines = [
     `Feature: administrative region`,
+    `AstroViewer dataset: ${datasetName}`,
     `Population: ${population}`,
     `Source attributes: ${Object.entries(sourceProperties)
       .map(([key, value]) => `${key}=${String(value)}`)
@@ -663,6 +1059,126 @@ function showRegionMetadata(
   observationMetadata.hidden = false;
 }
 
+function showScientificFeatureMetadata(
+  titleText: string,
+  lines: string[],
+  state: "hover" | "selected",
+): void {
+  if (state === "hover") {
+    observationMetadata.querySelector('[data-state="hover"]')?.remove();
+  }
+  const card = document.createElement("section");
+  card.className = "observation-record";
+  card.dataset.state = state;
+  const title = document.createElement("strong");
+  title.textContent = titleText;
+  card.append(title, ...lines.map((text) => {
+    const line = document.createElement("span");
+    line.textContent = text;
+    return line;
+  }));
+  if (state === "hover") observationMetadata.prepend(card);
+  else observationMetadata.append(card);
+  observationMetadata.hidden = false;
+}
+
+function showWildfireDetectionMetadata(
+  detection: WildfireDetection,
+  datasetName: string,
+  state: "hover" | "selected",
+): void {
+  showScientificFeatureMetadata(
+    `${detection.satellite} · ${detection.acquiredAt.slice(0, 16)} UTC`,
+    [
+      "Feature: satellite thermal detection",
+      `AstroViewer dataset: ${datasetName}`,
+      `Coordinates: ${detection.longitudeDeg.toFixed(4)}°, ${detection.latitudeDeg.toFixed(4)}°`,
+      `Fire Radiative Power: ${detection.fireRadiativePowerMw?.toFixed(2) ?? "unavailable"} MW`,
+      `Confidence: ${String(detection.confidence ?? "unavailable")}`,
+      `Instrument: ${detection.instrument} · ${detection.dayNight ?? "unknown"}`,
+      `Pixel dimensions: ${detection.scanKm ?? "—"} × ${detection.trackKm ?? "—"} km`,
+      "Provider: NASA LANCE FIRMS · not an incident-status classification",
+    ],
+    state,
+  );
+}
+
+function showBurnedAreaMetadata(
+  perimeter: BurnedAreaPerimeter,
+  datasetName: string,
+  state: "hover" | "selected",
+): void {
+  showScientificFeatureMetadata(
+    `GWIS burnt area ${perimeter.fireId}`,
+    [
+      "Feature: near-real-time burnt-area perimeter",
+      `AstroViewer dataset: ${datasetName}`,
+      `Area: ${Math.round(perimeter.areaHa).toLocaleString()} ha`,
+      `Initial observation: ${perimeter.initialAt.slice(0, 16)} UTC`,
+      `Final observation: ${perimeter.finalAt.slice(0, 16)} UTC`,
+      `Geometry: ${perimeter.geometry.type}`,
+      `Product: ${perimeter.product}`,
+      `Provider: ${perimeter.provider} · not an operational incident perimeter`,
+    ],
+    state,
+  );
+}
+
+function showFloodFootprintMetadata(
+  properties: Record<string, unknown>,
+  acquiredAt: string | undefined,
+  datasetName: string,
+  state: "hover" | "selected",
+): void {
+  showScientificFeatureMetadata(
+    `CEMS flood polygon ${String(properties.dmg_src_id ?? "—")}`,
+    [
+      `Feature: ${String(properties.notation ?? "observed flood extent")}`,
+      `AstroViewer dataset: ${datasetName}`,
+      `Event: ${String(properties.obj_desc ?? properties.event_type ?? "Riverine flood")}`,
+      `Mapped area: ${Number(properties.area ?? 0).toLocaleString()} ha`,
+      `Detection method: ${String(properties.det_method ?? "not supplied")}`,
+      `Acquired: ${acquiredAt?.slice(0, 16) ?? "unavailable"} UTC`,
+      "Activation: EMSR868 · AOI 02 Feres · monitoring 03",
+      "Provider: Copernicus EMS Rapid Mapping",
+    ],
+    state,
+  );
+}
+
+function showFloodExposureMetadata(
+  feature: OpenStreetMapInfrastructureFeature,
+  floodProduct: string,
+  floodDepth: string | undefined,
+  infrastructurePriority: number,
+  state: "hover" | "selected" = "hover",
+): void {
+  const assetType =
+    feature.tags.bridge === "yes"
+      ? `${feature.tags.railway ? "Railway" : "Road"} bridge`
+      : feature.tags.man_made === "wastewater_plant"
+        ? "Wastewater treatment plant"
+        : feature.category.replaceAll("-", " ");
+  showScientificFeatureMetadata(
+    feature.name ?? assetType,
+    [
+      `Feature: ${assetType}`,
+      "AstroViewer dataset: Soufli flood-context POIs",
+      `OpenStreetMap ID: ${feature.id}`,
+      `Coordinates: ${feature.longitudeDeg.toFixed(5)}°, ${feature.latitudeDeg.toFixed(5)}°`,
+      `Flood intersection: ${floodProduct}`,
+      `Estimated flood depth at asset centre: ${floodDepth ?? "not modelled"}`,
+      `Infrastructure priority used for marker size: ${infrastructurePriority}/5`,
+      `Operator: ${feature.tags.operator ?? "not supplied"}`,
+      floodProduct.startsWith("outside")
+        ? "Analysis: urban context only · no polygon intersection at representative point"
+        : "Analysis: spatial intersection · potential exposure, not verified damage",
+      "Sources: Copernicus EMS Rapid Mapping + OpenStreetMap contributors",
+    ],
+    state,
+  );
+}
+
 async function demonstrateAcquiredImageMetadata(token: number): Promise<void> {
   if (!satelliteAcquiredImagesLayer) return;
   const footprints = satelliteAcquiredImagesLayer.footprintPolygons.filter(
@@ -670,14 +1186,15 @@ async function demonstrateAcquiredImageMetadata(token: number): Promise<void> {
   );
   const targets = [footprints[4], footprints[6]].filter(Boolean);
   for (const footprint of targets) {
-    await animatePointer(footprintScreenPoint(footprint), token);
-    satelliteAcquiredImagesLayer.extHighlightFootprint(footprint, true);
-    showObservationMetadata(footprint, "hover");
+    const hoverPoint = await findFootprintHoverPoint(
+      satelliteAcquiredImagesLayer,
+      footprint,
+      token,
+    );
+    await animatePointer(hoverPoint, token);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await wait(1100, token);
-    satelliteAcquiredImagesLayer.extAddPolygons2Selected(footprint);
-    observationMetadata.querySelector('[data-state="hover"]')?.remove();
-    showObservationMetadata(footprint, "selected");
-    satelliteAcquiredImagesLayer.extHighlightFootprint(footprint, false);
+    await clickDemoPointer(token);
     await wait(1150, token);
   }
   await wait(1800, token);
@@ -694,6 +1211,7 @@ async function animateDragPointer(
   durationMs: number,
   token: number,
   start = { x: canvas.clientWidth * 0.46, y: canvas.clientHeight * 0.48 },
+  hideOnComplete = true,
 ): Promise<void> {
   const steps = Math.max(1, Math.round(durationMs / 50));
   demoPointer.hidden = false;
@@ -710,7 +1228,7 @@ async function animateDragPointer(
     }
   } finally {
     cursorGesture(false);
-    demoPointer.hidden = true;
+    demoPointer.hidden = hideOnComplete;
   }
 }
 
@@ -736,6 +1254,66 @@ function featureBounds(feature: GeoJSONFeature) {
     minLatitude: Math.min(...values.map(([, latitude]) => latitude)),
     maxLatitude: Math.max(...values.map(([, latitude]) => latitude)),
   };
+}
+
+function pointInRing(
+  longitude: number,
+  latitude: number,
+  ring: unknown,
+): boolean {
+  if (!Array.isArray(ring) || ring.length < 3) return false;
+  let inside = false;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
+    const currentPoint = ring[index];
+    const previousPoint = ring[previous];
+    if (
+      !Array.isArray(currentPoint) ||
+      !Array.isArray(previousPoint) ||
+      typeof currentPoint[0] !== "number" ||
+      typeof currentPoint[1] !== "number" ||
+      typeof previousPoint[0] !== "number" ||
+      typeof previousPoint[1] !== "number"
+    ) continue;
+    const crossesLatitude =
+      (currentPoint[1] > latitude) !== (previousPoint[1] > latitude);
+    if (
+      crossesLatitude &&
+      longitude <
+        ((previousPoint[0] - currentPoint[0]) *
+          (latitude - currentPoint[1])) /
+          (previousPoint[1] - currentPoint[1]) +
+          currentPoint[0]
+    ) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInFeature(
+  longitude: number,
+  latitude: number,
+  feature: GeoJSONFeature,
+): boolean {
+  const geometry = feature.geometry;
+  if (!geometry || !Array.isArray(geometry.coordinates)) return false;
+  const polygons = geometry.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry.type === "MultiPolygon"
+      ? geometry.coordinates
+      : [];
+  return polygons.some((polygon) =>
+    Array.isArray(polygon) &&
+    pointInRing(longitude, latitude, polygon[0]) &&
+    !polygon.slice(1).some((hole) => pointInRing(longitude, latitude, hole)),
+  );
+}
+
+function containingFeature(
+  longitude: number,
+  latitude: number,
+  collection: GeoJSONFeatureCollection,
+): GeoJSONFeature | undefined {
+  return collection.features.find((feature) =>
+    pointInFeature(longitude, latitude, feature));
 }
 
 function selectIntersectingRegions(
@@ -809,6 +1387,12 @@ function updateAcquiredImages(frame: ObservationTrackFrame): void {
   satelliteAcquiredImagesLayer.addGeoJSONFeatures(
     GeoJSONParser.parseGeoJSON(acquiredGeoJSON),
   );
+  registerFootprintInteraction(
+    "acquired-satellite-images",
+    satelliteAcquiredImagesLayer,
+    satelliteAcquiredImagesLayer.footprintPolygons,
+    (footprint, state) => showObservationMetadata(footprint, state),
+  );
 }
 
 function showCaption(
@@ -821,6 +1405,20 @@ function showCaption(
   headline.textContent = title;
   detail.textContent = description;
   apiCommand.textContent = command;
+}
+
+async function showClosingPanel(markup: string, token: number): Promise<void> {
+  if (closingPanel.hidden) {
+    closingPanel.innerHTML = markup;
+    closingPanel.hidden = false;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    return;
+  }
+  closingPanel.dataset.switching = "true";
+  await wait(320, token);
+  closingPanel.innerHTML = markup;
+  delete closingPanel.dataset.switching;
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function updateControls(): void {
@@ -890,6 +1488,7 @@ function hideEarthGrid(): void {
 
 function updateTelemetry(): void {
   const center = viewer.getCenterCoordinates();
+  const mouse = viewer.getCoordinatesFromMouse();
   const fov = viewer.getFoV();
   const stats = viewer.getXYZDebugStats();
   const layer = stats.layer;
@@ -900,6 +1499,16 @@ function updateTelemetry(): void {
       `Lat ${center.astroDeg.dec.toFixed(4)}°`;
   } else {
     coordinateStatus.textContent = "Center: —";
+  }
+
+  if (mouse) {
+    mouseCoordinateStatus.textContent =
+      `Mouse: Lon ${mouse.astroDeg.ra.toFixed(4)}° · ` +
+      `Lat ${mouse.astroDeg.dec.toFixed(4)}°`;
+    mouseCoordinateStatus.hidden = false;
+  } else {
+    mouseCoordinateStatus.textContent = "Mouse: —";
+    mouseCoordinateStatus.hidden = true;
   }
 
   fovStatus.textContent =
@@ -990,6 +1599,11 @@ async function reset(): Promise<void> {
   paused = false;
 
   credits.hidden = true;
+  closingPanel.hidden = true;
+  closingPanel.replaceChildren();
+  captionBox.hidden = false;
+  provenancePanel.hidden = false;
+  telemetryPanel.hidden = false;
   layerStack.hidden = true;
   savedContexts.hidden = true;
   observationMetadata.hidden = true;
@@ -1068,7 +1682,7 @@ async function scene02GeographicNavigation(
     { query: "New York, United States", longitude: -74.006, latitude: 40.7128 },
     { query: "São Paulo, Brazil", longitude: -46.6333, latitude: -23.5505 },
     { query: "Beijing, China", longitude: 116.4074, latitude: 39.9042 },
-    { query: "Tehran, Iran", longitude: 51.389, latitude: 35.6892 },
+    { query: "Amman, Jordan", longitude: 35.9304, latitude: 31.9539 },
     { query: "Rome, Italy", longitude: 12.4964, latitude: 41.9028 },
   ];
 
@@ -1330,15 +1944,16 @@ async function scene05RasterCompositing(token: number): Promise<void> {
 
 async function scene06GeoJSONPoints(token: number): Promise<void> {
   audit.scenes.push(6);
-  audit.sequencePhase = "scene06-world-capitals";
+  audit.sequencePhase = "scene06-european-capitals";
 
   showCaption(
     "06 / Geographic point data",
-    "World capitals",
-    "Start from the whole Earth and load a global capital catalogue into an AstroTable-backed point layer.",
+    "European capitals",
+    "Frame Europe and load all European capitals into an AstroTable-backed point layer with one high-contrast colour.",
     "const capitals = viewer.addTerraPointSet(capitalsTable, {\n" +
-      "  name: \"World capitals\"\n" +
-      "})",
+      "  name: \"European capitals\"\n" +
+      "})\n" +
+      'viewer.changeCatalogueColor(capitals, "#ff3d9a")',
   );
 
   const columns = [
@@ -1348,41 +1963,77 @@ async function scene06GeoJSONPoints(token: number): Promise<void> {
     new MetadataColumn({ index: 3, name: "country", columnType: ColumnType.STRING }),
     new MetadataColumn({ index: 4, name: "population", columnType: ColumnType.NUMBER, unit: "million" }),
   ];
-  const rows = worldCapitals.map((capital) => [...capital]);
+  const rows = europeanCapitals.map((capital) => [...capital]);
   const cityLayer = viewer.addTerraPointSet(
     { columns, rows },
     {
-      name: "World capitals",
-      description: "Synthetic demonstration catalogue enriched at runtime",
+      name: "European capitals",
+      description: "European capital catalogue enriched with runtime geographic context",
     },
   );
-  viewer.changeCatalogueColor(cityLayer, "#ffcf5a");
+  viewer.changeCatalogueColor(cityLayer, "#ff3d9a");
+  showScientificLegend("European capitals", [
+    { label: "Capital city", color: "#ff3d9a" },
+  ]);
   provenance.textContent =
-    `${rows.length} synthetic capital points · AstroTable Earth catalogue · ` +
+    `${rows.length} European capital points · AstroTable Earth catalogue · ` +
     "runtime context: Nominatim, Open-Meteo and Wikipedia";
 
-  await viewer.flyTo(12, 15, 1800);
-  await viewer.flyToFoV(118, 1400);
+  const capitalContexts = new Map<string, {
+    weather: Awaited<ReturnType<typeof fetchCurrentWeather>> | null;
+    resolvedPlace: ResolvedPlace | null;
+    wikipedia: Awaited<ReturnType<typeof fetchWikipediaSummary>> | null;
+  }>();
+  registerCatalogueInteraction(
+    "european-capitals",
+    cityLayer,
+    europeanCapitals,
+    (capital, state) => {
+      const [longitude, latitude, name, country, populationMillions] = capital;
+      const context = capitalContexts.get(name) ?? {
+        weather: null,
+        resolvedPlace: null,
+        wikipedia: null,
+      };
+      showCapitalMetadata(
+        name,
+        country,
+        longitude,
+        latitude,
+        populationMillions,
+        context.weather,
+        context.resolvedPlace,
+        context.wikipedia,
+        "European capitals",
+        state,
+      );
+    },
+  );
+
+  await viewer.flyTo(13, 50, 1800);
+  await viewer.flyToFoV(52, 1400);
   await wait(1800, token);
 
-  for (const index of [2, 9, 13]) {
+  const capitalNames = ["Lisbon", "Berlin", "Helsinki"];
+  for (const capitalName of capitalNames) {
+    const index = europeanCapitals.findIndex((capital) => capital[2] === capitalName);
+    if (index < 0) continue;
     const source = cityLayer.sources[index];
-    const [longitude, latitude, name, country, populationMillions] = worldCapitals[index];
+    const [longitude, latitude, name, country] = europeanCapitals[index];
     showCaption(
       "06 / Geographic point data",
       `${name} · runtime context`,
-      "Hover a global capital, resolve its geographic identity, query current weather and Wikipedia, then preserve the selection.",
+      "Fly to a European capital, hover its marker and enrich the catalogue record with place resolution, current weather and a concise geographic summary.",
       `await viewer.flyTo(${longitude}, ${latitude}, 1400)\n` +
-        "const source = capitals.getPrimaryHoveredSource()\n" +
         "const place = await placeResolver.search(name)\n" +
         "const weather = await fetchCurrentWeather(latitude, longitude)\n" +
         "const summary = await fetchWikipediaSummary(name)\n" +
-        "capitals.extAddSources2Selected(source)",
+        "canvas.addEventListener(\"source-hovered\", ({ detail }) =>\n" +
+        "  renderSourceMetadata(detail.source))",
     );
     await viewer.flyTo(longitude, latitude, 1400);
+    await viewer.flyToFoV(9, 900);
     await wait(500, token);
-    await animatePointer(pointToScreen(source.point) ?? { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 }, token);
-    cityLayer.extHighlightSource(source, true);
     let weather: Awaited<ReturnType<typeof fetchCurrentWeather>> | null = null;
     let resolvedPlace: ResolvedPlace | null = null;
     let wikipedia: Awaited<ReturnType<typeof fetchWikipediaSummary>> | null = null;
@@ -1401,67 +2052,49 @@ async function scene06GeoJSONPoints(token: number): Promise<void> {
     } catch (error) {
       audit.warnings.push(`${name} Wikipedia summary unavailable: ${String(error)}`);
     }
-    showCapitalMetadata(
-      name,
-      country,
-      longitude,
-      latitude,
-      populationMillions,
+    capitalContexts.set(name, {
       weather,
       resolvedPlace,
       wikipedia,
-      "hover",
-    );
+    });
+    await animatePointer(pointToScreen(source.point) ?? { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 }, token);
     await wait(1200, token);
-    cityLayer.extAddSources2Selected(source);
-    cityLayer.extHighlightSource(source, false);
-    observationMetadata.querySelector('[data-state="hover"]')?.remove();
-    showCapitalMetadata(
-      name,
-      country,
-      longitude,
-      latitude,
-      populationMillions,
-      weather,
-      resolvedPlace,
-      wikipedia,
-      "selected",
-    );
     await wait(1300, token);
   }
 
   showCaption(
     "06 / Geographic point data",
-    "Population-driven styling",
-    "Map the population column to marker size and brightness after completing the hover and selection examples.",
-    'viewer.setCatalogueShapeSize(capitals, "population")\n' +
-      'viewer.setCatalogueShapeHue(capitals, "population")',
+    "Population-driven marker size",
+    "Return to the European overview and map the illustrative population field only to marker size. Every capital retains the same high-contrast colour.",
+    "await viewer.flyTo(13, 50, 1800)\n" +
+      "await viewer.flyToFoV(52, 1400)\n" +
+      'viewer.setCatalogueShapeSize(capitals, "population")',
   );
+  clearHoverMetadata();
+  demoPointer.hidden = true;
+  await viewer.flyTo(13, 50, 1800);
+  await viewer.flyToFoV(52, 1400);
   viewer.setCatalogueShapeSize(cityLayer, "population");
-  viewer.setCatalogueShapeHue(cityLayer, "population");
+  showScientificLegend("European capitals · population mapping", [
+    {
+      label: "Marker size · lower → higher population",
+      color: "#ff3d9a",
+    },
+  ]);
   await wait(2200, token);
 
   showCaption(
     "06 / Geographic point data",
-    "Return to Europe",
-    "Move from the global catalogue to the European region before comparing administrative footprints.",
-    "await viewer.flyTo(7, 46, 1800)\n" +
-      "await viewer.flyToFoV(38, 1400)",
-  );
-  await viewer.flyTo(7, 46, 1800);
-  await viewer.flyToFoV(38, 1400);
-  await wait(1200, token);
-
-  showCaption(
-    "06 / Geographic point data",
     "Point-layer lifecycle",
-    "Remove the temporary capital catalogue and its interaction metadata before loading regional geometries.",
+    "Remove the temporary European-capital catalogue and its interaction metadata before loading the African fire-detection workflow.",
     "viewer.deleteTerraPointSet(cityLayer)",
   );
   viewer.deleteTerraPointSet(cityLayer);
+  catalogueInteractionBindings.delete(cityLayer);
   observationMetadata.replaceChildren();
   observationMetadata.hidden = true;
   demoPointer.hidden = true;
+  hideScientificLegend();
   await wait(1000, token);
 }
 
@@ -1578,14 +2211,18 @@ async function scene07AfricanWildfires(token: number): Promise<void> {
       "})\n" +
       'viewer.changeCatalogueColor(fires, "#ff7a2f")',
   );
+  const firesName = "NASA FIRMS · strongest African detections";
   const fires = viewer.addTerraPointSet(
     { columns, rows },
     {
-      name: "NASA FIRMS · strongest African detections",
+      name: firesName,
       description: "500 highest-FRP VIIRS NOAA-21 detections in the selected observation window",
     },
   );
   viewer.changeCatalogueColor(fires, "#ff7a2f");
+  showScientificLegend("NASA FIRMS · point colours", [
+    { label: "Uniform thermal detections", color: "#ff7a2f" },
+  ]);
   provenance.textContent =
     `${sourceMode} · NASA LANCE FIRMS · VIIRS NOAA-21 NRT · ` +
     `${inputDetectionCount.toLocaleString()} detections → 500 highest FRP`;
@@ -1602,11 +2239,17 @@ async function scene07AfricanWildfires(token: number): Promise<void> {
 
   showCaption(
     "07 / NASA FIRMS · African fires",
-    "Hue by acquisition day",
-    "Map the day within the five-day window to hue, revealing how the observed spatial pattern changes from 25 to 29 August.",
+    "Lightness by acquisition day",
+    "Map the five-day window to the catalogue lightness channel. Earlier detections remain dark orange and later detections become progressively lighter; the marker hue itself stays orange.",
     'viewer.setCatalogueShapeHue(fires, "dayInWindow")',
   );
   viewer.setCatalogueShapeHue(fires, "dayInWindow");
+  showScientificLegend("NASA FIRMS · acquisition-day lightness", [
+    {
+      label: "25 August dark → 29 August light",
+      color: "linear-gradient(90deg, #6f1d00, #ff7a2f, #ffd0b0)",
+    },
+  ]);
   await wait(3400, token);
 
   viewer.deleteTerraPointSet(fires);
@@ -1619,17 +2262,19 @@ async function scene07AfricanWildfires(token: number): Promise<void> {
   );
   const recentRows = recentDetections.map(detectionRow);
   const earlierRows = earlierDetections.map(detectionRow);
+  const earlierFiresName = "Earlier FIRMS detections · 25–27 August";
+  const recentFiresName = "Recent FIRMS detections · 28–29 August";
   const earlierFires = viewer.addTerraPointSet(
     { columns, rows: earlierRows },
     {
-      name: "Earlier FIRMS detections · 25–27 August",
+      name: earlierFiresName,
       description: "Earlier observations in the selected five-day window; not a declaration that a fire is extinguished",
     },
   );
   const recentFires = viewer.addTerraPointSet(
     { columns, rows: recentRows },
     {
-      name: "Recent FIRMS detections · 28–29 August",
+      name: recentFiresName,
       description: "Detections from the final 48 hours of the selected observation window",
     },
   );
@@ -1637,6 +2282,30 @@ async function scene07AfricanWildfires(token: number): Promise<void> {
   viewer.changeCatalogueColor(recentFires, "#ff2f2f");
   viewer.setCatalogueShapeSize(earlierFires, "frpMw");
   viewer.setCatalogueShapeSize(recentFires, "frpMw");
+  registerCatalogueInteraction(
+    "recent-firms-detections",
+    recentFires,
+    recentDetections,
+    (detection, state) => showWildfireDetectionMetadata(
+      detection,
+      recentFiresName,
+      state,
+    ),
+  );
+  registerCatalogueInteraction(
+    "earlier-firms-detections",
+    earlierFires,
+    earlierDetections,
+    (detection, state) => showWildfireDetectionMetadata(
+      detection,
+      earlierFiresName,
+      state,
+    ),
+  );
+  showScientificLegend("NASA FIRMS · temporal classes", [
+    { label: "Earlier detections · 25–27 August", color: "#050505" },
+    { label: "Recent detections · 28–29 August", color: "#ff2f2f" },
+  ]);
   showCaption(
     "07 / NASA FIRMS · African fires",
     "Recent and earlier detections",
@@ -1653,22 +2322,750 @@ async function scene07AfricanWildfires(token: number): Promise<void> {
 
   showCaption(
     "07 / NASA FIRMS · African fires",
-    "Release fire layers",
-    "Remove both observed point catalogues before continuing to geographic polygon layers.",
+    "Inspect detection metadata",
+    "Hover and preserve one recent and one earlier thermal detection. The associated measurements remain available after styling by time and radiant power.",
+    "canvas.addEventListener(\"source-hovered\", ({ detail }) =>\n" +
+      "  renderSourceMetadata(detail.source))\n" +
+      "canvas.addEventListener(\"source-clicked\", ({ detail }) =>\n" +
+      "  renderSelectionMetadata(detail.selectionState))",
+  );
+  for (const [layer, detection] of [
+    [recentFires, recentDetections[0]],
+    [earlierFires, earlierDetections[0]],
+  ] as const) {
+    const source = layer.sources[0];
+    if (!source || !detection) continue;
+    await animatePointer(
+      pointToScreen(source.point) ?? {
+        x: canvas.clientWidth / 2,
+        y: canvas.clientHeight / 2,
+      },
+      token,
+    );
+    await wait(1100, token);
+    await clickDemoPointer(token);
+    await wait(1200, token);
+  }
+  await wait(1400, token);
+
+  showCaption(
+    "07 / NASA FIRMS · African fires",
+    "Release detection layers",
+    "Remove both thermal-detection catalogues before requesting the corresponding burnt-area product.",
     "viewer.deleteTerraPointSet(recentFires)\n" +
       "viewer.deleteTerraPointSet(earlierFires)",
   );
   viewer.deleteTerraPointSet(recentFires);
   viewer.deleteTerraPointSet(earlierFires);
-  await wait(1800, token);
-}
+  catalogueInteractionBindings.delete(recentFires);
+  catalogueInteractionBindings.delete(earlierFires);
+  observationMetadata.replaceChildren();
+  observationMetadata.hidden = true;
+  demoPointer.hidden = true;
+  hideScientificLegend();
+  await wait(1400, token);
 
-async function scene08AdministrativeRegions(token: number): Promise<void> {
-  audit.scenes.push(8);
-  audit.sequencePhase = "scene08-administrative-regions";
+  const perimeterCaptionStartedAt = performance.now();
+  showCaption(
+    "07 / COPERNICUS GWIS · BURNT AREAS",
+    "Query near-real-time perimeters",
+    "Astrospatial Services queries the official GWIS WFS for MODIS & VIIRS NRT burnt-area polygons overlapping the same region and observation window.",
+    "const result = await gwis.queryPerimeters({\n" +
+      "  area: { west: 11, south: -18, east: 25, north: -4 },\n" +
+      '  startDate: "2026-08-25", endDate: "2026-08-29",\n' +
+      "  minAreaHa: 1000\n" +
+      "})",
+  );
+  let perimeterSourceMode = "LIVE COPERNICUS GWIS";
+  let inputPerimeterCount = 0;
+  let availablePerimeters: BurnedAreaPerimeter[];
+  try {
+    const result = await gwisBurnedAreaService.queryPerimeters({
+      area: { west: 11, south: -18, east: 25, north: -4 },
+      startDate: "2026-08-25",
+      endDate: "2026-08-29",
+      minAreaHa: 1000,
+    });
+    check(token);
+    inputPerimeterCount = result.perimeters.length;
+    availablePerimeters = result.perimeters;
+  } catch (error) {
+    perimeterSourceMode = "OFFICIAL GWIS SNAPSHOT FALLBACK";
+    audit.warnings.push(`Copernicus GWIS runtime query unavailable: ${String(error)}`);
+    const snapshot = await loadGwisSnapshot();
+    check(token);
+    inputPerimeterCount = snapshot.selection.inputPerimeterCount;
+    availablePerimeters = snapshot.perimeters;
+  }
+  await wait(
+    Math.max(0, 2000 - (performance.now() - perimeterCaptionStartedAt)),
+    token,
+  );
+
+  const largestPerimeters = [...availablePerimeters]
+    .sort((left, right) => right.areaHa - left.areaHa)
+    .slice(0, 80);
+  const totalSelectedAreaHa = largestPerimeters.reduce(
+    (sum, perimeter) => sum + perimeter.areaHa,
+    0,
+  );
+  showCaption(
+    "07 / COPERNICUS GWIS · BURNT AREAS",
+    "Add observed burnt-area geometry",
+    `GWIS returned ${inputPerimeterCount.toLocaleString()} perimeters of at least 1,000 ha. Render the 80 largest provider geometries as one uniform footprint layer.`,
+    "const burntAreas = viewer.createTerraFootprintSet(...)\n" +
+      "burntAreas.addGeoJSONFeatures(\n" +
+      "  GeoJSONParser.parseGeoJSON(perimeterGeoJSON))\n" +
+      'viewer.changeFootprintSetColor(burntAreas, "#ff7a2f")\n' +
+      "viewer.showTerraFootprintSet(burntAreas)",
+  );
+  const burntAreasName = "Copernicus GWIS burnt areas";
+  const burntAreas = viewer.createTerraFootprintSet(
+    burntAreasName,
+    "80 largest MODIS & VIIRS NRT burnt-area perimeters in the selected window",
+    "https://maps.effis.emergency.copernicus.eu/gwis",
+    new MetadataManager([]),
+  );
+  burntAreas.addGeoJSONFeatures(
+    GeoJSONParser.parseGeoJSON(burnedAreaGeoJSON(largestPerimeters)),
+  );
+  viewer.changeFootprintSetColor(burntAreas, "#ff7a2f");
+  viewer.showTerraFootprintSet(burntAreas);
+  registerFootprintInteraction(
+    "gwis-burnt-areas",
+    burntAreas,
+    largestPerimeters,
+    (perimeter, state) => showBurnedAreaMetadata(
+      perimeter,
+      burntAreasName,
+      state,
+    ),
+  );
+  showScientificLegend("Copernicus GWIS · footprint colours", [
+    { label: "Observed burnt-area perimeters", color: "#ff7a2f" },
+  ]);
+  provenance.textContent =
+    `${perimeterSourceMode} · MODIS & VIIRS NRT · ${inputPerimeterCount.toLocaleString()} ` +
+    `perimeters ≥1,000 ha → 80 largest · selected area ${Math.round(totalSelectedAreaHa).toLocaleString()} ha`;
+  await wait(4200, token);
 
   showCaption(
-    "08 / Administrative regions",
+    "07 / COPERNICUS GWIS · BURNT AREAS",
+    "Inspect the perimeter geometry",
+    "Move into the dense Angola cluster after establishing the regional context. At this scale the provider polygons read as burnt-area footprints rather than point symbols.",
+    "await viewer.flyTo(19.07, -9.87, 1800)\n" +
+      "await viewer.flyToFoV(3.2, 1600)",
+  );
+  await viewer.flyTo(19.07, -9.87, 1800);
+  await viewer.flyToFoV(3.2, 1600);
+  await wait(2600, token);
+
+  showCaption(
+    "07 / COPERNICUS GWIS · BURNT AREAS",
+    "Inspect burnt-area metadata",
+    "Hover and select two provider polygons. Each footprint retains its area, observation interval, product provenance and source identifier.",
+    "canvas.addEventListener(\"pointermove\", () =>\n" +
+      "  requestAnimationFrame(() =>\n" +
+      "    renderHoveredMetadata(viewer.getHoveredFootprints())))\n" +
+      "canvas.addEventListener(\"footprint-clicked\", ({ detail }) =>\n" +
+      "  renderSelectionMetadata(detail.selectionState))",
+  );
+  for (const index of [2, 4]) {
+    const footprint = burntAreas.footprintPolygons[index];
+    const perimeter = largestPerimeters[index];
+    if (!footprint || !perimeter) continue;
+    const hoverPoint = await findFootprintHoverPoint(burntAreas, footprint, token);
+    await animatePointer(hoverPoint, token);
+    await wait(1100, token);
+    await clickDemoPointer(token);
+    await wait(1200, token);
+  }
+  await wait(1400, token);
+
+  dispatchPointer(canvas.clientWidth * 0.5, 8);
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  clearHoverMetadata();
+  observationMetadata.replaceChildren();
+  observationMetadata.hidden = true;
+  demoPointer.hidden = true;
+  viewer.deleteTerraFootprintSet(burntAreas);
+  footprintInteractionBindings.delete(burntAreas);
+  const recentPerimeters = largestPerimeters.filter(
+    ({ finalAt }) => finalAt >= cutoff,
+  );
+  const earlierPerimeters = largestPerimeters.filter(
+    ({ finalAt }) => finalAt < cutoff,
+  );
+  const earlierBurntAreas = viewer.createTerraFootprintSet(
+    "Earlier GWIS burnt areas",
+    "Perimeters whose provider-reported final observation precedes 28 August",
+    "https://maps.effis.emergency.copernicus.eu/gwis",
+    new MetadataManager([]),
+  );
+  earlierBurntAreas.addGeoJSONFeatures(
+    GeoJSONParser.parseGeoJSON(burnedAreaGeoJSON(earlierPerimeters)),
+  );
+  const recentBurntAreas = viewer.createTerraFootprintSet(
+    "Recent GWIS burnt-area evolution",
+    "Perimeters whose provider-reported final observation is on or after 28 August",
+    "https://maps.effis.emergency.copernicus.eu/gwis",
+    new MetadataManager([]),
+  );
+  recentBurntAreas.addGeoJSONFeatures(
+    GeoJSONParser.parseGeoJSON(burnedAreaGeoJSON(recentPerimeters)),
+  );
+  viewer.changeFootprintSetColor(earlierBurntAreas, "#050505");
+  viewer.changeFootprintSetColor(recentBurntAreas, "#ff2f2f");
+  viewer.showTerraFootprintSet(earlierBurntAreas);
+  viewer.showTerraFootprintSet(recentBurntAreas);
+  showScientificLegend("Copernicus GWIS · observation time", [
+    { label: "Final observation before 28 August", color: "#050505" },
+    { label: "Updated on/after 28 August", color: "#ff2f2f" },
+  ]);
+  showCaption(
+    "07 / COPERNICUS GWIS · BURNT AREAS",
+    "Compare perimeter evolution",
+    `Red outlines ${recentPerimeters.length} perimeters updated on or after 28 August; black outlines ${earlierPerimeters.length} earlier perimeters. This is a temporal observation split, not an operational active/extinguished status.`,
+    "const recent = perimeters.filter(({ finalAt }) => finalAt >= cutoff)\n" +
+      "const earlier = perimeters.filter(({ finalAt }) => finalAt < cutoff)\n" +
+      'viewer.changeFootprintSetColor(recentAreas, "#ff2f2f")\n' +
+      'viewer.changeFootprintSetColor(earlierAreas, "#050505")',
+  );
+  await wait(5200, token);
+
+  showCaption(
+    "07 / COPERNICUS GWIS · BURNT AREAS",
+    "Release burnt-area layers",
+    "Remove both GWIS footprint sets before continuing to the next Earth-observation workflow.",
+    "viewer.deleteTerraFootprintSet(recentBurntAreas)\n" +
+      "viewer.deleteTerraFootprintSet(earlierBurntAreas)",
+  );
+  viewer.deleteTerraFootprintSet(recentBurntAreas);
+  viewer.deleteTerraFootprintSet(earlierBurntAreas);
+  hideScientificLegend();
+  await wait(1800, token);
+
+  showCaption(
+    "07 / COPERNICUS GWIS · BURNT AREAS",
+    "Return to the regional view",
+    "Zoom out from the inspected Angola footprints before starting the long transition toward the European flood activation.",
+    "await viewer.flyToFoV(44, 2000)",
+  );
+  await viewer.flyToFoV(44, 2000);
+  await wait(1500, token);
+}
+
+async function scene08EuropeanFlooding(token: number): Promise<void> {
+  audit.scenes.push(8);
+  audit.sequencePhase = "scene08-european-flooding";
+
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Move to the Evros River basin",
+    "Navigate to Feres in north-eastern Greece before requesting the official emergency-mapping products for the February 2026 riverine flood.",
+    "await viewer.flyTo(26.18, 40.86, 2000)\n" +
+      "await viewer.flyToFoV(0.309, 1800)",
+  );
+  await viewer.flyTo(26.18, 40.86, 2000);
+  await viewer.flyToFoV(0.309, 1800);
+  await wait(900, token);
+
+  const queryCaptionStartedAt = performance.now();
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Request emergency-mapping products",
+    "Astrospatial Services resolves activation EMSR868, AOI 02 Feres, then downloads the maximum mapped extent, latest observed flood extent and modelled flood depth from monitoring 03.",
+    "const maximum = await cems.queryFloodLayer({\n" +
+      '  activationCode: "EMSR868", areaNumber: 2,\n' +
+      '  monitoringNumber: 3, kind: "maximum-flood-extent"\n' +
+      "})\n" +
+      "const latest = await cems.queryFloodLayer({\n" +
+      '  activationCode: "EMSR868", areaNumber: 2,\n' +
+      '  monitoringNumber: 3, kind: "observed-event"\n' +
+      "})\n" +
+      "const depth = await cems.queryFloodLayer({\n" +
+      '  activationCode: "EMSR868", areaNumber: 2,\n' +
+      '  monitoringNumber: 3, kind: "flood-depth"\n' +
+      "})",
+  );
+
+  let sourceMode = "LIVE COPERNICUS EMS";
+  let maximumExtent: CemsFloodLayerResult;
+  let latestObservedExtent: CemsFloodLayerResult;
+  let floodDepth: CemsFloodLayerResult;
+  try {
+    [maximumExtent, latestObservedExtent, floodDepth] = await Promise.all([
+      cemsRapidMappingService.queryFloodLayer({
+        activationCode: "EMSR868",
+        areaNumber: 2,
+        monitoringNumber: 3,
+        kind: "maximum-flood-extent",
+      }),
+      cemsRapidMappingService.queryFloodLayer({
+        activationCode: "EMSR868",
+        areaNumber: 2,
+        monitoringNumber: 3,
+        kind: "observed-event",
+      }),
+      cemsRapidMappingService.queryFloodLayer({
+        activationCode: "EMSR868",
+        areaNumber: 2,
+        monitoringNumber: 3,
+        kind: "flood-depth",
+      }),
+    ]);
+    check(token);
+  } catch (error) {
+    sourceMode = "OFFICIAL CEMS SNAPSHOT FALLBACK";
+    audit.warnings.push(`Copernicus EMS runtime query unavailable: ${String(error)}`);
+    const snapshot = await loadCemsSnapshot();
+    check(token);
+    maximumExtent = snapshot.maximumExtent;
+    latestObservedExtent = snapshot.latestObservedExtent;
+    floodDepth = snapshot.floodDepth;
+  }
+  await wait(
+    Math.max(0, 2200 - (performance.now() - queryCaptionStartedAt)),
+    token,
+  );
+
+  const maximumFloodName = "EMSR868 maximum mapped flood extent";
+  const maximumFlood = viewer.createTerraFootprintSet(
+    maximumFloodName,
+    "Copernicus EMS maximum mapped extent for Feres, monitoring 03",
+    "https://mapping.emergency.copernicus.eu/activations/EMSR868/",
+    new MetadataManager([]),
+  );
+  maximumFlood.addGeoJSONFeatures(
+    GeoJSONParser.parseGeoJSON(maximumExtent.data),
+  );
+  viewer.changeFootprintSetColor(maximumFlood, "#230585");
+  viewer.showTerraFootprintSet(maximumFlood);
+  showScientificLegend("Copernicus EMS · flood products", [
+    { label: "Maximum mapped flood extent", color: "#230585" },
+  ]);
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Render the maximum mapped extent",
+    `Render ${maximumExtent.data.features.length.toLocaleString()} polygons from the official CEMS “Maximum flood extent” layer. CEMS marks this layer as modelled: it represents the product's maximum flood scenario for Monitoring 03, not the latest observed water extent and not a claim that every location remains flooded.`,
+    "const maximumFlood = viewer.createTerraFootprintSet(...)\n" +
+      "maximumFlood.addGeoJSONFeatures(\n" +
+      "  GeoJSONParser.parseGeoJSON(maximum.data))\n" +
+      'viewer.changeFootprintSetColor(maximumFlood, "#230585")\n' +
+      "viewer.showTerraFootprintSet(maximumFlood)",
+  );
+  provenance.textContent =
+    `${sourceMode} · EMSR868 · Feres AOI 02 · maximum mapped extent · ` +
+    `${maximumExtent.data.features.length.toLocaleString()} polygons`;
+  await wait(3800, token);
+
+  const latestFloodName = "EMSR868 latest observed flood extent";
+  const latestFlood = viewer.createTerraFootprintSet(
+    latestFloodName,
+    "Copernicus EMS observed flood extent acquired 27 February 2026",
+    "https://mapping.emergency.copernicus.eu/activations/EMSR868/",
+    new MetadataManager([]),
+  );
+  latestFlood.addGeoJSONFeatures(
+    GeoJSONParser.parseGeoJSON(latestObservedExtent.data),
+  );
+  viewer.changeFootprintSetColor(latestFlood, "#23bde8");
+  viewer.showTerraFootprintSet(latestFlood);
+  registerFootprintInteraction(
+    "cems-latest-observed-flood",
+    latestFlood,
+    latestObservedExtent.data.features,
+    (feature, state) => showFloodFootprintMetadata(
+      feature.properties,
+      latestObservedExtent.acquiredAt,
+      latestFloodName,
+      state,
+    ),
+  );
+  showScientificLegend("Copernicus EMS · flood products", [
+    { label: "Maximum mapped flood extent", color: "#230585" },
+    { label: "Latest observed flood extent", color: "#23bde8" },
+  ]);
+
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Inspect the mapped flood geometry",
+    "Keep the approximately 0.544° × 0.309° Feres view after both products become visible. Individual mapped polygons now read as areas rather than point markers.",
+    "await viewer.flyTo(26.18, 40.86, 1800)",
+  );
+  await viewer.flyTo(26.18, 40.86, 1800);
+  await wait(2800, token);
+
+  loadingIndicator.hidden = false;
+  await viewer.transitionToXYZ(openStreetMap, { durationMs: 1400 });
+  await waitForEarthTiles(token);
+
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Inspect flood-footprint metadata",
+    "Move into a tighter inspection field, hover and select one observed-flood polygon, then follow the latest mapped event north-east and inspect a second footprint. Each selection exposes its mapped area, detection method, acquisition time and Copernicus activation provenance.",
+    "await viewer.flyToFoV(0.069, 1800)\n" +
+      "canvas.addEventListener(\"pointermove\", () =>\n" +
+      "  renderHoveredMetadata(viewer.getHoveredFootprints()))\n" +
+      "canvas.addEventListener(\"footprint-clicked\", ({ detail }) =>\n" +
+      "  renderSelectionMetadata(detail.selectionState))\n" +
+      "await viewer.flyTo(northEastLongitude, northEastLatitude, 2200)\n" +
+      "// The click event preserves the selected footprint",
+  );
+  const floodFeatureCenters = latestObservedExtent.data.features
+    .map((feature, index) => {
+      const bounds = featureBounds(feature);
+      return bounds
+        ? {
+            index,
+            longitude: (bounds.minLongitude + bounds.maxLongitude) / 2,
+            latitude: (bounds.minLatitude + bounds.maxLatitude) / 2,
+          }
+        : null;
+    })
+    .filter((target): target is {
+      index: number;
+      longitude: number;
+      latitude: number;
+    } => target !== null);
+  const firstFloodTarget = floodFeatureCenters
+    .toSorted((left, right) =>
+      Math.hypot(left.longitude - 26.18, left.latitude - 40.86) -
+      Math.hypot(right.longitude - 26.18, right.latitude - 40.86))
+    [0];
+  const northEastFloodTarget = floodFeatureCenters
+    .filter((target) => target.index !== firstFloodTarget?.index)
+    .toSorted((left, right) =>
+      (right.longitude + right.latitude) -
+      (left.longitude + left.latitude))
+    [0];
+  await viewer.flyToFoV(0.069, 1800);
+  const floodTargets = [firstFloodTarget, northEastFloodTarget].filter(
+    (target): target is {
+      index: number;
+      longitude: number;
+      latitude: number;
+    } => target !== undefined,
+  );
+
+  for (const [targetNumber, target] of floodTargets.entries()) {
+    const { index, longitude, latitude } = target;
+    await viewer.flyTo(longitude, latitude, targetNumber === 0 ? 1400 : 2200);
+    await wait(targetNumber === 0 ? 500 : 900, token);
+    const footprint = latestFlood.footprintPolygons[index];
+    const feature = latestObservedExtent.data.features[index];
+    if (!footprint || !feature) continue;
+    const hoverPoint = await findFootprintHoverPoint(latestFlood, footprint, token);
+    await animatePointer(hoverPoint, token);
+    await wait(1100, token);
+    await clickDemoPointer(token);
+    await wait(1200, token);
+  }
+  await wait(1400, token);
+
+  const infrastructureArea = {
+    west: 26.27,
+    south: 41.16,
+    east: 26.34,
+    north: 41.23,
+  };
+  const infrastructureCategories = [
+    "bridge",
+    "transport",
+    "healthcare",
+    "emergency",
+    "education",
+    "public-service",
+    "utility",
+    "poi",
+  ] as const;
+  showCaption(
+    "08 / COPERNICUS EMS · FLOOD EXPOSURE",
+    "Query infrastructure around Soufli",
+    "Astrospatial Services queries OpenStreetMap through Overpass, then intersects infrastructure centres with Copernicus flood products. This derives potential exposure; it does not claim verified damage or interruption.",
+    "const infrastructure = await overpass.queryInfrastructure({\n" +
+      "  area: soufliArea,\n" +
+      "  categories: [\"bridge\", \"transport\", \"healthcare\",\n" +
+      "    \"emergency\", \"education\", \"public-service\", \"utility\", \"poi\"]\n" +
+      "})\n" +
+      "const analysed = relateToFloodProducts(infrastructure, cemsFloodProducts)",
+  );
+  let infrastructureSource = "LIVE OPENSTREETMAP · OVERPASS API";
+  let infrastructure: OpenStreetMapInfrastructureResult;
+  try {
+    infrastructure = await openStreetMapOverpassService.queryInfrastructure({
+      area: infrastructureArea,
+      categories: [...infrastructureCategories],
+    });
+    check(token);
+  } catch (error) {
+    infrastructureSource = "OPENSTREETMAP SNAPSHOT FALLBACK";
+    audit.warnings.push(`OpenStreetMap Overpass query unavailable: ${String(error)}`);
+    infrastructure = await loadOpenStreetMapInfrastructureSnapshot();
+    check(token);
+  }
+
+  const infrastructurePriority = (feature: OpenStreetMapInfrastructureFeature): number => {
+    if (["emergency", "healthcare", "utility"].includes(feature.category)) return 5;
+    if (["bridge", "transport"].includes(feature.category)) return 4;
+    if (["education", "public-service"].includes(feature.category)) return 3;
+    return feature.name ? 2 : 1;
+  };
+  const floodCandidates = infrastructure.features.map((feature) => {
+    const latest = containingFeature(
+      feature.longitudeDeg,
+      feature.latitudeDeg,
+      latestObservedExtent.data,
+    );
+    const maximum = containingFeature(
+      feature.longitudeDeg,
+      feature.latitudeDeg,
+      maximumExtent.data,
+    );
+    const depth = containingFeature(
+      feature.longitudeDeg,
+      feature.latitudeDeg,
+      floodDepth.data,
+    );
+    return {
+      feature,
+      floodProduct: latest
+        ? "latest observed flood extent"
+        : maximum
+          ? "maximum mapped flood extent"
+          : "outside mapped flood polygons · urban context",
+      floodRelation: latest ? 3 : maximum ? 2 : 1,
+      infrastructurePriority: infrastructurePriority(feature),
+      floodDepth: depth?.properties?.value
+        ? String(depth.properties.value)
+        : undefined,
+    };
+  }).toSorted((left, right) => {
+    if (left.floodRelation !== right.floodRelation) {
+      return right.floodRelation - left.floodRelation;
+    }
+    if (left.infrastructurePriority !== right.infrastructurePriority) {
+      return right.infrastructurePriority - left.infrastructurePriority;
+    }
+    const leftDistance = Math.hypot(
+      left.feature.longitudeDeg - 26.304,
+      left.feature.latitudeDeg - 41.195,
+    );
+    const rightDistance = Math.hypot(
+      right.feature.longitudeDeg - 26.304,
+      right.feature.latitudeDeg - 41.195,
+    );
+    return leftDistance - rightDistance;
+  }).slice(0, 100);
+  const directlyIntersectingCount = floodCandidates.filter(
+    ({ floodRelation }) => floodRelation > 1,
+  ).length;
+  observationMetadata.replaceChildren();
+  observationMetadata.hidden = true;
+
+  showCaption(
+    "08 / COPERNICUS EMS · FLOOD EXPOSURE",
+    "Move from satellite mapping to the street network",
+    `Keep the OpenStreetMap basemap introduced for footprint inspection and zoom into Soufli. Analyse ${floodCandidates.length} OpenStreetMap POIs; ${directlyIntersectingCount} representative points intersect a mapped Copernicus flood product.`,
+    "await viewer.flyTo(26.304, 41.195, 1800)\n" +
+      "await viewer.flyToFoV(0.035, 1600)",
+  );
+  await viewer.flyTo(26.304, 41.195, 1800);
+  await viewer.flyToFoV(0.035, 1600);
+  await wait(1000, token);
+
+  const exposureColumns = [
+    new MetadataColumn({ index: 0, name: "longitudeDeg", columnType: ColumnType.GEOM_RA, unit: "deg" }),
+    new MetadataColumn({ index: 1, name: "latitudeDeg", columnType: ColumnType.GEOM_DEC, unit: "deg" }),
+    new MetadataColumn({ index: 2, name: "asset", columnType: ColumnType.MAIN_NAME }),
+    new MetadataColumn({ index: 3, name: "category", columnType: ColumnType.STRING }),
+    new MetadataColumn({ index: 4, name: "osmId", columnType: ColumnType.STRING }),
+    new MetadataColumn({ index: 5, name: "floodProduct", columnType: ColumnType.STRING }),
+    new MetadataColumn({ index: 6, name: "infrastructurePriority", columnType: ColumnType.NUMBER }),
+    new MetadataColumn({ index: 7, name: "floodRelation", columnType: ColumnType.NUMBER }),
+  ];
+  const exposureRows = floodCandidates.map(({
+    feature,
+    floodProduct,
+    infrastructurePriority,
+    floodRelation,
+  }) => [
+    feature.longitudeDeg,
+    feature.latitudeDeg,
+    feature.name ?? feature.tags.man_made ?? feature.category,
+    feature.category,
+    feature.id,
+    floodProduct,
+    infrastructurePriority,
+    floodRelation,
+  ]);
+  const exposureLayerName = "Soufli flood-context POIs";
+  const exposureLayer = viewer.addTerraPointSet(
+    { columns: exposureColumns, rows: exposureRows },
+    {
+      name: exposureLayerName,
+      description: "One hundred OSM POIs classified by infrastructure priority and relation to Copernicus flood products",
+    },
+  );
+  registerCatalogueInteraction(
+    "soufli-flood-context-pois",
+    exposureLayer,
+    floodCandidates,
+    (exposure, state) => showFloodExposureMetadata(
+      exposure.feature,
+      exposure.floodProduct,
+      exposure.floodDepth,
+      exposure.infrastructurePriority,
+      state,
+    ),
+  );
+  viewer.changeCatalogueColor(exposureLayer, "#ff304f");
+  showScientificLegend("Soufli · 100 urban POIs", [
+    { label: "OpenStreetMap infrastructure and buildings", color: "#ff304f" },
+    { label: "Latest observed flood extent", color: "#23bde8" },
+    { label: "Maximum mapped flood extent", color: "#230585" },
+  ]);
+  provenance.textContent =
+    `${infrastructureSource} · Copernicus EMSR868 monitoring 03 · ` +
+    "spatial intersection, not verified damage";
+
+  showCaption(
+    "08 / COPERNICUS EMS · FLOOD EXPOSURE",
+    "Add 100 high-contrast urban POIs",
+    "Render the analysed OpenStreetMap sample in red. The set includes critical infrastructure, services, named places and mapped buildings; only the explicitly classified markers intersect a CEMS flood polygon.",
+    'viewer.changeCatalogueColor(pois, "#ff304f")',
+  );
+  await wait(1500, token);
+
+  showCaption(
+    "08 / COPERNICUS EMS · FLOOD EXPOSURE",
+    "Size by infrastructure priority",
+    "Quickly map the derived 1–5 priority field to symbol size. Utilities, emergency and healthcare assets are largest; generic mapped buildings remain smallest. This is a visual priority, not a damage score.",
+    'viewer.setCatalogueShapeSize(pois, "infrastructurePriority")',
+  );
+  viewer.setCatalogueShapeSize(exposureLayer, "infrastructurePriority");
+  await wait(1500, token);
+
+  showCaption(
+    "08 / COPERNICUS EMS · FLOOD EXPOSURE",
+    "Hue by flood-product relationship",
+    "Map the relationship field to marker hue: urban context, maximum mapped extent, or latest observed extent. The classification comes from geometry intersection at each OSM representative point.",
+    'viewer.setCatalogueShapeHue(pois, "floodRelation")',
+  );
+  viewer.setCatalogueShapeHue(exposureLayer, "floodRelation");
+  showScientificLegend("Soufli · POI encoding", [
+    {
+      label: "Hue · context → maximum → latest extent",
+      color: "linear-gradient(90deg, #5f0717, #ff304f, #ffb2be)",
+    },
+    {
+      label: "Size · generic building → critical infrastructure",
+      color: "#ff304f",
+    },
+  ]);
+  await wait(1800, token);
+
+  showCaption(
+    "08 / COPERNICUS EMS · FLOOD EXPOSURE",
+    "Inspect POI metadata",
+    "Hover a small sample and preserve one POI selection. Metadata exposes the AstroViewer dataset, OSM identifier, infrastructure priority and exact CEMS relationship. Intersections indicate potential exposure, never verified damage.",
+    "canvas.addEventListener(\"source-hovered\", ({ detail }) =>\n" +
+      "  renderSourceMetadata(detail.source))\n" +
+      "canvas.addEventListener(\"source-clicked\", ({ detail }) =>\n" +
+      "  renderSelectionMetadata(detail.selectionState))\n" +
+      "const metadata = { osmId, priority, floodProduct, floodDepth }",
+  );
+  const hoverCandidates = floodCandidates
+    .map((exposure, index) => {
+      const source = exposureLayer.sources[index];
+      const screenPoint = source ? pointToScreen(source.point) : null;
+      return { exposure, index, screenPoint };
+    })
+    .filter(({ screenPoint }) =>
+      screenPoint !== null &&
+      screenPoint.x >= 70 &&
+      screenPoint.x <= canvas.clientWidth - 70 &&
+      screenPoint.y >= 70 &&
+      screenPoint.y <= canvas.clientHeight - 70)
+    .toSorted((left, right) =>
+      right.exposure.floodRelation - left.exposure.floodRelation)
+    .slice(0, 4);
+  for (const [candidateIndex, { index, screenPoint }] of hoverCandidates.entries()) {
+    const source = exposureLayer.sources[index];
+    if (!source || !screenPoint) continue;
+    await animatePointer(screenPoint, token);
+    await wait(750, token);
+    if (candidateIndex === 0) {
+      await clickDemoPointer(token);
+      await wait(650, token);
+    }
+  }
+  await wait(1000, token);
+  viewer.deleteTerraPointSet(exposureLayer);
+  catalogueInteractionBindings.delete(exposureLayer);
+  observationMetadata.querySelector('[data-state="hover"]')?.remove();
+  demoPointer.hidden = true;
+
+  const floodStats = latestObservedExtent.statistics?.["Flooded area"] as
+    | Record<string, { affected?: unknown }>
+    | undefined;
+  const affectedHa = Number(floodStats?.None?.affected);
+  const roads = latestObservedExtent.statistics?.Transportation as
+    | Record<string, { affected?: unknown; unit?: unknown }>
+    | undefined;
+  const affectedRoadKm = roads
+    ? Object.values(roads).reduce(
+        (sum, item) => sum + (Number(item.affected) || 0),
+        0,
+      )
+    : 0;
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Compare with the latest observation",
+    `Cyan shows ${latestObservedExtent.data.features.length.toLocaleString()} polygons observed on 27 February. Copernicus reports ${affectedHa.toLocaleString()} ha flooded and ${affectedRoadKm.toFixed(1)} km of affected mapped transport routes. The dark/cyan comparison is maximum versus latest observed extent—not an operational active/receded classification.`,
+    "latestFlood.addGeoJSONFeatures(\n" +
+      "  GeoJSONParser.parseGeoJSON(latest.data))\n" +
+      'viewer.changeFootprintSetColor(latestFlood, "#23bde8")\n' +
+      "viewer.showTerraFootprintSet(latestFlood)",
+  );
+  provenance.textContent =
+    `${sourceMode} · Copernicus EMS Rapid Mapping · EMSR868 · ` +
+    `Sentinel-1 / COSMO-SkyMed / ICEYE · acquired 27 February 2026`;
+  await wait(5200, token);
+
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Release flood geometries",
+    "Remove both emergency-mapping layers before continuing to the administrative-boundary workflow.",
+    "viewer.deleteTerraFootprintSet(latestFlood)\n" +
+      "viewer.deleteTerraFootprintSet(maximumFlood)",
+  );
+  viewer.deleteTerraFootprintSet(latestFlood);
+  viewer.deleteTerraFootprintSet(maximumFlood);
+  footprintInteractionBindings.delete(latestFlood);
+  observationMetadata.replaceChildren();
+  observationMetadata.hidden = true;
+  demoPointer.hidden = true;
+  hideScientificLegend();
+  await wait(1600, token);
+
+  showCaption(
+    "08 / COPERNICUS EMS · EUROPEAN FLOODING",
+    "Leave the floodplain",
+    "Widen the field from the street-level Soufli inspection before the camera moves west toward the Italian administrative-region workflow.",
+    "await viewer.flyToFoV(26, 2400)",
+  );
+  await viewer.flyToFoV(26, 2400);
+  await waitForEarthTiles(token);
+  await wait(1000, token);
+}
+
+async function scene09AdministrativeRegions(token: number): Promise<void> {
+  audit.scenes.push(9);
+  audit.sequencePhase = "scene09-administrative-regions";
+
+  showCaption(
+    "09 / Administrative regions",
     "Italian administrative regions",
     "Render GeoJSON Polygon and MultiPolygon features as an interactive Earth footprint layer.",
     "const regions = GeoJSONParser.parseGeoJSON(italyGeoJSON)\n" +
@@ -1687,9 +3084,40 @@ async function scene08AdministrativeRegions(token: number): Promise<void> {
   italyLayer.addGeoJSONFeatures(GeoJSONParser.parseGeoJSON(italyGeoJSON));
   viewer.changeFootprintSetColor(italyLayer, "#24c8ff");
   viewer.showTerraFootprintSet(italyLayer);
+  showScientificLegend("Administrative footprint sets", [
+    { label: "Italian regions", color: "#24c8ff" },
+  ]);
+  registerFootprintInteraction(
+    "italian-regions",
+    italyLayer,
+    italyGeoJSON.features,
+    (feature, state) => showRegionMetadata(
+      String(feature.properties?.reg_name ?? "Italian region"),
+      "Italy",
+      "not supplied by the geometry dataset",
+      feature.properties ?? {},
+      "Italian regions",
+      state,
+    ),
+  );
   await viewer.flyTo(16.4, 41.1, 1600);
   await viewer.flyToFoV(16, 1200);
   await wait(1400, token);
+
+  showCaption(
+    "09 / Administrative regions",
+    "Listen for footprint interaction",
+    "Connect pointer movement to the public hovered-footprint state and listen for click selections before rendering application metadata.",
+    "canvas.addEventListener(\"pointermove\", () => {\n" +
+      "  requestAnimationFrame(() => {\n" +
+      "    const hovered = viewer.getHoveredFootprints()\n" +
+      "    renderHoveredMetadata(hovered)\n" +
+      "  })\n" +
+      "})\n" +
+      "canvas.addEventListener(\"footprint-clicked\", ({ detail }) =>\n" +
+      "  renderSelectionMetadata(detail.selectionState))",
+  );
+  await wait(2200, token);
 
   const pugliaIndex = italyGeoJSON.features.findIndex(
     (feature) => feature.properties?.reg_name === "Puglia",
@@ -1698,38 +3126,33 @@ async function scene08AdministrativeRegions(token: number): Promise<void> {
   let pugliaHoverPoint: { x: number; y: number } | null = null;
   if (puglia) {
     showCaption(
-      "08 / Administrative regions",
+      "09 / Administrative regions",
       "Puglia · interactive metadata",
       "Hover and select the regional footprint while preserving its source attributes and demonstration metadata.",
-      "italyLayer.extHighlightFootprint(puglia, true)\n" +
-        "italyLayer.extAddPolygons2Selected(puglia)",
+      "// Hover is reported by viewer.getHoveredFootprints()\n" +
+        "// Selection is reported by the footprint-clicked event",
     );
     pugliaHoverPoint = await findFootprintHoverPoint(italyLayer, puglia, token);
+    const pugliaApproachPoint = {
+      x: Math.min(canvas.clientWidth - 70, pugliaHoverPoint.x + 190),
+      y: pugliaHoverPoint.y,
+    };
+    pointerPosition = pugliaApproachPoint;
+    cursorGesture(false);
+    demoPointer.hidden = false;
+    placeDemoPointer(pugliaApproachPoint.x, pugliaApproachPoint.y);
+    clearHoverMetadata();
+    dispatchPointer(pugliaApproachPoint.x, pugliaApproachPoint.y);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await wait(350, token);
     await animatePointer(pugliaHoverPoint, token);
-    italyLayer.extHighlightFootprint(puglia, true);
-    showRegionMetadata(
-      "Puglia",
-      "Italy",
-      "about 3.9 million (illustrative demo metadata)",
-      italyGeoJSON.features[pugliaIndex].properties ?? {},
-      "hover",
-    );
     await wait(1100, token);
-    italyLayer.extAddPolygons2Selected(puglia);
-    observationMetadata.querySelector('[data-state="hover"]')?.remove();
-    showRegionMetadata(
-      "Puglia",
-      "Italy",
-      "about 3.9 million (illustrative demo metadata)",
-      italyGeoJSON.features[pugliaIndex].properties ?? {},
-      "selected",
-    );
-    italyLayer.extHighlightFootprint(puglia, false);
+    await clickDemoPointer(token);
     await wait(1300, token);
   }
 
   showCaption(
-    "08 / Administrative regions",
+    "09 / Administrative regions",
     "Compare independent polygon layers",
     "Add Spain as a second footprint set with its own colour and lifecycle.",
     "spainLayer.addGeoJSONFeatures(GeoJSONParser.parseGeoJSON(spainGeoJSON))\n" +
@@ -1747,6 +3170,23 @@ async function scene08AdministrativeRegions(token: number): Promise<void> {
   spainLayer.addGeoJSONFeatures(GeoJSONParser.parseGeoJSON(spainGeoJSON));
   viewer.changeFootprintSetColor(spainLayer, "#ff334f");
   viewer.showTerraFootprintSet(spainLayer);
+  showScientificLegend("Administrative footprint sets", [
+    { label: "Italian regions", color: "#24c8ff" },
+    { label: "Spanish regions", color: "#ff334f" },
+  ]);
+  registerFootprintInteraction(
+    "spanish-regions",
+    spainLayer,
+    spainGeoJSON.features,
+    (feature, state) => showRegionMetadata(
+      String(feature.properties?.name ?? "Spanish region"),
+      "Spain",
+      "not supplied by the geometry dataset",
+      feature.properties ?? {},
+      "Spanish regions",
+      state,
+    ),
+  );
   const pointOutsidePuglia = pugliaHoverPoint
     ? {
         x: Math.min(canvas.clientWidth - 8, pugliaHoverPoint.x + 75),
@@ -1758,11 +3198,20 @@ async function scene08AdministrativeRegions(token: number): Promise<void> {
     token,
   );
   await wait(250, token);
+  showCaption(
+    "09 / Administrative regions",
+    "Rotate west toward the Balearic Islands",
+    "Change from the inspection cursor to a drag gesture and rotate the globe toward the second administrative layer while preserving the Puglia selection.",
+    "await viewer.flyTo(3.5, 39.6, 1800)",
+  );
   await Promise.all([
     viewer.flyTo(3.5, 39.6, 1800),
-    // animateDragPointer(-70, 1800, token, pointOutsidePuglia),
+    animateDragPointer(150, 1800, token, pointOutsidePuglia, false),
   ]);
   await viewer.flyToFoV(13, 1200);
+  dispatchPointer(pointerPosition.x, pointerPosition.y);
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  await wait(850, token);
   await wait(1400, token);
 
   const balearicIndex = spainGeoJSON.features.findIndex(
@@ -1771,52 +3220,28 @@ async function scene08AdministrativeRegions(token: number): Promise<void> {
   const balearicIslands = spainLayer.footprintPolygons[balearicIndex];
   if (balearicIslands) {
     showCaption(
-      "08 / Administrative regions",
+      "09 / Administrative regions",
       "Balearic Islands · independent selection",
       "Hover and select a feature from the second polygon layer without changing the Puglia selection.",
-      "spainLayer.extHighlightFootprint(balearicIslands, true)\n" +
-        "spainLayer.extAddPolygons2Selected(balearicIslands)",
+      "// Hover is reported by viewer.getHoveredFootprints()\n" +
+        "// Selection is reported by the footprint-clicked event",
     );
     const balearicHoverPoint = await findFootprintHoverPoint(
       spainLayer,
       balearicIslands,
       token,
     );
-    const approachPoint = {
-      x: Math.min(canvas.clientWidth - 8, balearicHoverPoint.x + 180),
-      y: balearicHoverPoint.y,
-    };
-    await animatePointer(approachPoint, token);
-    dispatchPointer(approachPoint.x, approachPoint.y);
-    await wait(250, token);
     await animatePointer(balearicHoverPoint, token);
     await wait(350, token);
-    spainLayer.extHighlightFootprint(balearicIslands, true);
-    showRegionMetadata(
-      "Balearic Islands",
-      "Spain",
-      "about 1.2 million (illustrative demo metadata)",
-      spainGeoJSON.features[balearicIndex].properties ?? {},
-      "hover",
-    );
     await wait(1250, token);
-    spainLayer.extAddPolygons2Selected(balearicIslands);
-    observationMetadata.querySelector('[data-state="hover"]')?.remove();
-    showRegionMetadata(
-      "Balearic Islands",
-      "Spain",
-      "about 1.2 million (illustrative demo metadata)",
-      spainGeoJSON.features[balearicIndex].properties ?? {},
-      "selected",
-    );
-    spainLayer.extHighlightFootprint(balearicIslands, false);
+    await clickDemoPointer(token);
     await wait(1400, token);
   }
   demoPointer.hidden = true;
   dispatchPointer(canvas.clientWidth - 8, canvas.clientHeight - 8);
 
   showCaption(
-    "08 / Administrative regions",
+    "09 / Administrative regions",
     "Release regional layers",
     "Remove both administrative footprint sets before the dedicated maritime-route scene.",
     "viewer.deleteTerraFootprintSet(italyLayer)\n" +
@@ -1824,17 +3249,20 @@ async function scene08AdministrativeRegions(token: number): Promise<void> {
   );
   viewer.deleteTerraFootprintSet(italyLayer);
   viewer.deleteTerraFootprintSet(spainLayer);
+  footprintInteractionBindings.delete(italyLayer);
+  footprintInteractionBindings.delete(spainLayer);
   observationMetadata.replaceChildren();
   observationMetadata.hidden = true;
+  hideScientificLegend();
   await wait(1400, token);
 }
 
-async function scene09MaritimeRoutes(token: number): Promise<void> {
-  audit.scenes.push(9);
-  audit.sequencePhase = "scene09-maritime-routes";
+async function scene10MaritimeRoutes(token: number): Promise<void> {
+  audit.scenes.push(10);
+  audit.sequencePhase = "scene10-maritime-routes";
 
   showCaption(
-    "09 / Mediterranean ferry routes",
+    "10 / Mediterranean ferry routes",
     "European ferry routes",
     "Switch to a labelled street map, frame the eastern Mediterranean and render eighty real ferry-route geometries published by the European Atlas of the Seas.",
     "await viewer.transitionToXYZ(openStreetMap)\n" +
@@ -1886,7 +3314,7 @@ async function scene09MaritimeRoutes(token: number): Promise<void> {
   await wait(2200, token);
 
   showCaption(
-    "09 / Mediterranean ferry routes",
+    "10 / Mediterranean ferry routes",
     "Piraeus · a connected ferry hub",
     "Approach the port of Piraeus, where several routes in the published network converge.",
     "await viewer.flyTo(23.6384, 37.9453, 3200)\n" +
@@ -1897,7 +3325,7 @@ async function scene09MaritimeRoutes(token: number): Promise<void> {
   await wait(2600, token);
 
   showCaption(
-    "09 / Mediterranean ferry routes",
+    "10 / Mediterranean ferry routes",
     "Follow the network west",
     "Widen the view, then move gradually across the published ferry network towards Sicily.",
     "await viewer.flyToFoV(34, 2800)\n" +
@@ -1908,7 +3336,7 @@ async function scene09MaritimeRoutes(token: number): Promise<void> {
   await wait(2600, token);
 
   showCaption(
-    "09 / Mediterranean ferry routes",
+    "10 / Mediterranean ferry routes",
     "Release vector layers",
     "Delete both ferry-route layers, hide their legend and restore the observational imagery used by the rest of the showcase.",
     "viewer.deleteTerraPolylineSet(allYearRoutes)\n" +
@@ -1930,13 +3358,13 @@ async function scene09MaritimeRoutes(token: number): Promise<void> {
   await wait(1100, token);
 }
 
-async function scene10GeographicGrid(token: number): Promise<void> {
-  audit.scenes.push(10);
-  audit.sequencePhase = "scene10-geographic-grid";
+async function scene11GeographicGrid(token: number): Promise<void> {
+  audit.scenes.push(11);
+  audit.sequencePhase = "scene11-geographic-grid";
 
   hideEarthGrid();
   showCaption(
-    "10 / Geographic coordinate grid",
+    "11 / Geographic coordinate grid",
     "Longitude and latitude",
     "Enable the Earth-owned coordinate grid as a spatial reference over the active base map.",
     "viewer.toggleLonLatGrid()",
@@ -1945,7 +3373,7 @@ async function scene10GeographicGrid(token: number): Promise<void> {
   await wait(1600, token);
 
   showCaption(
-    "10 / Geographic coordinate grid",
+    "11 / Geographic coordinate grid",
     "Equator and prime meridian",
     "Navigate to the origin of geographic longitude and latitude.",
     "await viewer.flyTo(0, 0, 2200)\n" +
@@ -1956,7 +3384,7 @@ async function scene10GeographicGrid(token: number): Promise<void> {
   await wait(1800, token);
 
   showCaption(
-    "10 / Geographic coordinate grid",
+    "11 / Geographic coordinate grid",
     "High-latitude reference",
     "Adaptive labels preserve a readable geographic reference toward northern latitudes.",
     "await viewer.flyTo(-21.9426, 64.1466, 2200)",
@@ -1965,7 +3393,7 @@ async function scene10GeographicGrid(token: number): Promise<void> {
   await wait(2200, token);
 
   showCaption(
-    "10 / Geographic coordinate grid",
+    "11 / Geographic coordinate grid",
     "Independent grid state",
     "Disable the Earth grid without changing Astronomy grid visibility.",
     "viewer.toggleLonLatGrid()",
@@ -1974,16 +3402,16 @@ async function scene10GeographicGrid(token: number): Promise<void> {
   await wait(1000, token);
 }
 
-async function scene11SavedEarthContexts(token: number): Promise<void> {
-  audit.scenes.push(11);
-  audit.sequencePhase = "scene11-saved-earth-contexts";
+async function scene12SavedEarthContexts(token: number): Promise<void> {
+  audit.scenes.push(12);
+  audit.sequencePhase = "scene12-saved-earth-contexts";
   viewer.deleteState("earth-rome-analysis");
   viewer.deleteState("earth-madrid-cartography");
   savedContextRows.replaceChildren();
   savedContexts.hidden = false;
 
   showCaption(
-    "11 / Saved Earth contexts",
+    "12 / Saved Earth contexts",
     "Save an analysis context",
     "Store the Rome camera, FoV, Esri base map, NASA overlay opacity and geographic-grid state as one named context.",
     "const overlay = viewer.addWMTSRasterOverlay(nasaBlueMarble)\n" +
@@ -2011,7 +3439,7 @@ async function scene11SavedEarthContexts(token: number): Promise<void> {
   await wait(1800, token);
 
   showCaption(
-    "11 / Saved Earth contexts",
+    "12 / Saved Earth contexts",
     "Save a cartographic context",
     "Create a second state with a different base map, target, FoV and no geographic grid.",
     "await viewer.transitionToXYZ(openStreetMap)\n" +
@@ -2038,7 +3466,7 @@ async function scene11SavedEarthContexts(token: number): Promise<void> {
   await wait(1800, token);
 
   showCaption(
-    "11 / Saved Earth contexts",
+    "12 / Saved Earth contexts",
     "Restore the complete analysis state",
     "Restore Rome together with its camera, grid and raster composition rather than rebuilding each component manually.",
     "await viewer.restoreState(\"earth-rome-analysis\")",
@@ -2053,6 +3481,7 @@ async function scene11SavedEarthContexts(token: number): Promise<void> {
       token,
     );
     await wait(500, token);
+    await clickInterfaceElement(romeCard, token);
   }
   await viewer.restoreState("earth-rome-analysis");
   setActiveContext("earth-rome-analysis");
@@ -2060,12 +3489,28 @@ async function scene11SavedEarthContexts(token: number): Promise<void> {
   await wait(2200, token);
 
   showCaption(
-    "11 / Saved Earth contexts",
-    "Remove saved contexts",
-    "Select each × control and delete both named snapshots; the currently restored visual state remains active.",
-    "viewer.deleteState(\"earth-madrid-cartography\")\n" +
-      "viewer.deleteState(\"earth-rome-analysis\")",
+    "12 / Saved Earth contexts",
+    "Reopen Madrid before deletion",
+    "Select the Madrid card once more to restore its OpenStreetMap camera and grid-free cartographic state, then remove that saved context.",
+    "await viewer.restoreState(\"earth-madrid-cartography\")\n" +
+      "viewer.deleteState(\"earth-madrid-cartography\")",
   );
+  const madridCard = savedContextRows.querySelector<HTMLElement>(
+    '[data-name="earth-madrid-cartography"]',
+  );
+  if (madridCard) {
+    const bounds = madridCard.getBoundingClientRect();
+    await animatePointer(
+      { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 },
+      token,
+    );
+    await wait(400, token);
+    await clickInterfaceElement(madridCard, token);
+  }
+  await viewer.restoreState("earth-madrid-cartography");
+  setActiveContext("earth-madrid-cartography");
+  await waitForEarthTiles(token);
+  await wait(1400, token);
   const madridDelete = savedContextRows.querySelector<HTMLElement>(
     '[data-context-delete="earth-madrid-cartography"]',
   );
@@ -2076,10 +3521,35 @@ async function scene11SavedEarthContexts(token: number): Promise<void> {
       token,
     );
     await wait(400, token);
+    await clickInterfaceElement(madridDelete, token);
   }
   viewer.deleteState("earth-madrid-cartography");
   savedContextRows.querySelector('[data-name="earth-madrid-cartography"]')?.remove();
-  await wait(700, token);
+  await wait(900, token);
+
+  showCaption(
+    "12 / Saved Earth contexts",
+    "Return to Rome and remove the final context",
+    "Select Rome analysis to restore its imagery composition and geographic grid, then delete the last saved snapshot.",
+    "await viewer.restoreState(\"earth-rome-analysis\")\n" +
+      "viewer.deleteState(\"earth-rome-analysis\")",
+  );
+  const remainingRomeCard = savedContextRows.querySelector<HTMLElement>(
+    '[data-name="earth-rome-analysis"]',
+  );
+  if (remainingRomeCard) {
+    const bounds = remainingRomeCard.getBoundingClientRect();
+    await animatePointer(
+      { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 },
+      token,
+    );
+    await wait(400, token);
+    await clickInterfaceElement(remainingRomeCard, token);
+  }
+  await viewer.restoreState("earth-rome-analysis");
+  setActiveContext("earth-rome-analysis");
+  await waitForEarthTiles(token);
+  await wait(1400, token);
   const romeDelete = savedContextRows.querySelector<HTMLElement>(
     '[data-context-delete="earth-rome-analysis"]',
   );
@@ -2090,6 +3560,7 @@ async function scene11SavedEarthContexts(token: number): Promise<void> {
       token,
     );
     await wait(400, token);
+    await clickInterfaceElement(romeDelete, token);
   }
   viewer.deleteState("earth-rome-analysis");
   savedContextRows.querySelector('[data-name="earth-rome-analysis"]')?.remove();
@@ -2180,15 +3651,15 @@ async function loadSatelliteObservation(token: number): Promise<ObservationTrack
   return satelliteHandle;
 }
 
-async function scene12SatelliteObservation(token: number): Promise<void> {
-  audit.scenes.push(12);
-  audit.sequencePhase = "scene12-satellite-observation";
+async function scene13SatelliteObservation(token: number): Promise<void> {
+  audit.scenes.push(13);
+  audit.sequencePhase = "scene13-satellite-observation";
   hideEarthGrid();
   captionBox.classList.add("satellite-scene");
   satelliteLegend.hidden = false;
 
   showCaption(
-    "12 / Satellite observation",
+    "13 / Satellite observation",
     "ISS observation geometry",
     "Load one observation track containing the satellite model, ground track, sensor cone and sampled footprints.",
     "const adapter = new ObservationTrackViewerAdapter({ viewer })\n" +
@@ -2201,7 +3672,7 @@ async function scene12SatelliteObservation(token: number): Promise<void> {
   await wait(2200, token);
 
   showCaption(
-    "12 / Satellite observation",
+    "13 / Satellite observation",
     "A three-dimensional orbital object",
     "With the whole Earth visible, orbit the camera to reveal that the satellite model and sensor cone are above the surface.",
     "await viewer.rotateEarthLongitude(14, 2200)\n" +
@@ -2218,7 +3689,7 @@ async function scene12SatelliteObservation(token: number): Promise<void> {
   await wait(1200, token);
 
   showCaption(
-    "12 / Satellite observation",
+    "13 / Satellite observation",
     "Observation layers",
     "The gray sensor footprint follows the satellite continuously; each sampled image becomes cyan when its centre is reached.",
     "observation.setVisualisation({\n" +
@@ -2240,15 +3711,15 @@ async function scene12SatelliteObservation(token: number): Promise<void> {
   await wait(3000, token);
 }
 
-async function scene13ObservationTimeline(token: number): Promise<void> {
-  audit.scenes.push(13);
-  audit.sequencePhase = "scene13-observation-timeline";
+async function scene14ObservationTimeline(token: number): Promise<void> {
+  audit.scenes.push(14);
+  audit.sequencePhase = "scene14-observation-timeline";
   const observation = satelliteHandle ?? await loadSatelliteObservation(token);
   captionBox.classList.add("satellite-scene");
   satelliteLegend.hidden = false;
 
   showCaption(
-    "13 / Observation timeline",
+    "14 / Observation timeline",
     "Approach the moving observation",
     "Interpolate the observation while a slow zoom and camera orbit reveal its three-dimensional motion.",
     "observation.seek(0)\n" +
@@ -2269,7 +3740,7 @@ async function scene13ObservationTimeline(token: number): Promise<void> {
   await wait(700, token);
 
   showCaption(
-    "13 / Observation timeline",
+    "14 / Observation timeline",
     "Pause and resume",
     "Pause at the current observation state, then resume with a smaller camera adjustment and no temporal jump.",
     "observation.pause()\n" +
@@ -2292,7 +3763,7 @@ async function scene13ObservationTimeline(token: number): Promise<void> {
   observation.pause();
 
   showCaption(
-    "13 / Observation timeline",
+    "14 / Observation timeline",
     "Completed observation pass",
     "Zoom out while preserving the satellite, ground track, acquired images and intersected regions as one complete observation geometry.",
     "await viewer.flyToFoV(82, 2200)",
@@ -2302,17 +3773,19 @@ async function scene13ObservationTimeline(token: number): Promise<void> {
   await wait(1800, token);
 
   showCaption(
-    "13 / Observation timeline",
+    "14 / Observation timeline",
     "Observation metadata",
     "Hover two acquired-image footprints, then preserve their selection to inspect observation identifiers, targets, coordinates and acquisition times.",
-    "const footprint = acquiredImages.hoveredFootprints.footprints[0]\n" +
-      "acquiredImages.extHighlightFootprint(footprint, true)\n" +
-      "acquiredImages.extAddPolygons2Selected(footprint)",
+    "canvas.addEventListener(\"pointermove\", () =>\n" +
+      "  requestAnimationFrame(() =>\n" +
+      "    renderHoveredMetadata(viewer.getHoveredFootprints())))\n" +
+      "canvas.addEventListener(\"footprint-clicked\", ({ detail }) =>\n" +
+      "  renderSelectionMetadata(detail.selectionState))",
   );
   await demonstrateAcquiredImageMetadata(token);
 
   showCaption(
-    "13 / Observation timeline",
+    "14 / Observation timeline",
     "Release observation resources",
     "Stop the timeline and remove every transient satellite, sensor and vector resource.",
     "observation.dispose()\n" +
@@ -2322,38 +3795,100 @@ async function scene13ObservationTimeline(token: number): Promise<void> {
   await wait(1400, token);
 }
 
-async function scene14StandardsAndCredits(token: number): Promise<void> {
-  audit.scenes.push(14);
-  audit.sequencePhase = "scene14-standards-credits";
+async function scene15ProvenanceAndStructure(token: number): Promise<void> {
+  audit.scenes.push(15);
+  audit.sequencePhase = "scene15-provenance-structure";
   clearSatelliteObservation();
   hideEarthGrid();
   viewer.removeAllEarthRasterOverlays();
 
   showCaption(
-    "14 / Provenance and credits",
-    "What the showcase demonstrated",
-    "Conclude by returning to the global view and summarising the standards, public APIs and data provenance used throughout E00.",
+    "15 / Provenance and structure",
+    "Services and data providers",
+    "Leave the local observation workflows, return to the global Earth and fade the imagery before separating the runtime services from the organisations and communities providing maps and scientific data.",
     "await viewer.flyTo(12.4964, 41.9028, 1800)\n" +
-      "await viewer.flyToFoV(78, 1600)",
+      "await viewer.flyToFoV(78, 1600)\n" +
+      "await viewer.fadeEarthBaseMapOpacity(0, 2200)\n" +
+      "showServicesAndProviders()",
   );
   await viewer.flyTo(12.4964, 41.9028, 1800);
   await viewer.flyToFoV(78, 1600);
   provenance.textContent =
     "XYZ · OGC WMTS · GeoJSON · WebGL2 · geographic coordinates · " +
     "timestamped observation tracks";
-  await wait(2600, token);
-
-  showCaption(
-    "14 / Provenance and credits",
-    "Credits and provenance",
-    "Fade the Earth imagery to black, then display the data, technology and project credits used by the showcase.",
-    "await viewer.fadeEarthBaseMapOpacity(0, 2200)\n" +
-      "credits.hidden = false",
-  );
+  await wait(1000, token);
   await viewer.fadeEarthBaseMapOpacity(0, 2200);
   await wait(350, token);
-  credits.hidden = false;
-  await wait(mode === "video" ? 9000 : 5000, token);
+  captionBox.hidden = true;
+  provenancePanel.hidden = true;
+  telemetryPanel.hidden = true;
+  await showClosingPanel(`
+    <p class="panel-eyebrow">E00 · Provenance</p>
+    <h2>Services and data providers</h2>
+    <p class="panel-subtitle">
+      E00 combines Astrospatial Services adapters with recognised public
+      geospatial and Earth-observation sources.
+    </p>
+    <div class="provenance-grid">
+      <article class="closing-card">
+        <h3>Services used</h3>
+        <p>
+          NASA FIRMS Area API · Copernicus GWIS WFS · Copernicus EMS Rapid
+          Mapping products · OpenStreetMap Overpass API · Nominatim place
+          search · Open-Meteo forecast API · Wikipedia REST API
+        </p>
+      </article>
+      <article class="closing-card">
+        <h3>Data providers</h3>
+        <p>
+          Esri World Imagery · NASA EOSDIS GIBS · NASA LANCE FIRMS ·
+          Copernicus GWIS · Copernicus EMS · OpenStreetMap contributors ·
+          OpenTopoMap contributors · European Atlas of the Seas ·
+          © EuroGeographics 2022
+        </p>
+      </article>
+    </div>
+  `, token);
+  await wait(mode === "video" ? 7000 : 4200, token);
+
+  await showClosingPanel(`
+    <p class="panel-eyebrow">E00 · Software structure</p>
+    <h2>How data reaches the globe</h2>
+    <p class="panel-subtitle">
+      Astrospatial Services retrieves and normalises provider data.
+      AstroViewer renders the resulting maps, catalogues, footprints and
+      observation geometry. Both use shared models from astrospatial-core.
+    </p>
+    <div class="architecture-node architecture-demo">
+      <strong>E00 demo application</strong>
+      <span>Orchestrates the viewer, service queries and presentation sequence</span>
+    </div>
+    <div class="architecture-connector" aria-hidden="true">↓</div>
+    <div class="architecture-pair">
+      <article class="architecture-node viewer">
+        <strong>AstroViewer</strong>
+        <span>
+          Earth rendering · camera · XYZ and WMTS rasters · catalogues ·
+          footprints · polylines · saved contexts · observation geometry
+        </span>
+      </article>
+      <article class="architecture-node services">
+        <strong>Astrospatial Services</strong>
+        <span>
+          Provider adapters · request normalisation · GeoJSON-ready results ·
+          reproducible snapshot fallbacks
+        </span>
+        <div class="architecture-connector" aria-hidden="true">↓</div>
+        <span><b>External providers</b> · maps, observations and context APIs</span>
+      </article>
+    </div>
+    <div class="architecture-connector" aria-hidden="true">↓</div>
+    <div class="architecture-node architecture-core">
+      <strong>astrospatial-core</strong>
+      <span>Shared spatial models, metadata and interoperable data structures</span>
+    </div>
+  `, token);
+  await wait(mode === "video" ? 9000 : 5200, token);
 }
 
 const showcaseScenes: Array<{
@@ -2366,15 +3901,16 @@ const showcaseScenes: Array<{
   { number: 3, title: "Open XYZ maps", run: scene03OpenXYZMaps },
   { number: 4, title: "Standards-based WMTS imagery", run: scene04ScientificWMTS },
   { number: 5, title: "Raster compositing", run: scene05RasterCompositing },
-  { number: 6, title: "World capitals and runtime context", run: scene06GeoJSONPoints },
+  { number: 6, title: "European capitals and runtime context", run: scene06GeoJSONPoints },
   { number: 7, title: "NASA FIRMS African fire detections", run: scene07AfricanWildfires },
-  { number: 8, title: "Administrative regions", run: scene08AdministrativeRegions },
-  { number: 9, title: "Mediterranean ferry routes", run: scene09MaritimeRoutes },
-  { number: 10, title: "Geographic coordinate grid", run: scene10GeographicGrid },
-  { number: 11, title: "Saved Earth contexts", run: scene11SavedEarthContexts },
-  { number: 12, title: "Satellite observation geometry", run: scene12SatelliteObservation },
-  { number: 13, title: "Observation timeline", run: scene13ObservationTimeline },
-  { number: 14, title: "Provenance and credits", run: scene14StandardsAndCredits },
+  { number: 8, title: "Copernicus EMS European flooding", run: scene08EuropeanFlooding },
+  { number: 9, title: "Administrative regions", run: scene09AdministrativeRegions },
+  { number: 10, title: "Mediterranean ferry routes", run: scene10MaritimeRoutes },
+  { number: 11, title: "Geographic coordinate grid", run: scene11GeographicGrid },
+  { number: 12, title: "Saved Earth contexts", run: scene12SavedEarthContexts },
+  { number: 13, title: "Satellite observation geometry", run: scene13SatelliteObservation },
+  { number: 14, title: "Observation timeline", run: scene14ObservationTimeline },
+  { number: 15, title: "Provenance and structure", run: scene15ProvenanceAndStructure },
 ];
 
 async function runE00(startScene: number = requestedScene): Promise<void> {
@@ -2384,7 +3920,7 @@ async function runE00(startScene: number = requestedScene): Promise<void> {
 
   const normalizedStartScene = (
     Number.isFinite(startScene)
-      ? Math.min(14, Math.max(1, Math.trunc(startScene)))
+      ? Math.min(15, Math.max(1, Math.trunc(startScene)))
       : requestedScene
   ) as SceneNumber;
 
@@ -2420,7 +3956,7 @@ async function runE00(startScene: number = requestedScene): Promise<void> {
     audit.sequencePhase = "complete";
     status.textContent =
       `E00 review complete · ${String(normalizedStartScene).padStart(2, "0")}` +
-      "–14";
+      "–15";
   } catch (error) {
     if (token === sequenceToken) {
       console.error("E00 sequence failed", error);
@@ -2442,10 +3978,20 @@ async function resetForRun(
 ): Promise<void> {
   clearSatelliteObservation();
   credits.hidden = true;
+  closingPanel.hidden = true;
+  closingPanel.replaceChildren();
+  delete closingPanel.dataset.switching;
+  captionBox.hidden = false;
+  provenancePanel.hidden = false;
+  telemetryPanel.hidden = false;
   layerStack.hidden = true;
   savedContexts.hidden = true;
+  hideScientificLegend();
   observationMetadata.replaceChildren();
   observationMetadata.hidden = true;
+  catalogueInteractionBindings.clear();
+  footprintInteractionBindings.clear();
+  hoveredSourceActive = false;
   viewer.removeAllEarthRasterOverlays();
   viewer.setActiveDomain("earth");
   activateEsriWorldImagery();
