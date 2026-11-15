@@ -17,6 +17,11 @@ import {
   NominatimService,
   type ResolvedPlace,
 } from "astrospatial-services/earth/name-resolver";
+import {
+  FirmsService,
+  type FirmsAreaResult,
+  type WildfireDetection,
+} from "astrospatial-services/earth/wildfire";
 
 declare global {
   interface AstroViewerDemoAPI {
@@ -182,18 +187,6 @@ const worldCapitals = [
   [151.2093, -33.8688, "Canberra", "Australia", 0.5],
 ] as const;
 
-const europeanFireClusters = [
-  [-8.18, 40.12, "Central Portugal", 82, 3],
-  [-7.55, 41.63, "Northern Portugal", 68, 2],
-  [-6.25, 42.52, "North-western Spain", 91, 3],
-  [-3.42, 38.23, "Andalusia", 57, 2],
-  [2.62, 41.78, "Catalonia", 44, 1],
-  [16.38, 39.34, "Calabria", 76, 3],
-  [23.73, 38.72, "Central Greece", 88, 3],
-  [26.15, 39.18, "Aegean coast", 63, 2],
-  [15.12, 45.02, "Adriatic coast", 39, 1],
-] as const;
-
 const placeResolver = new NominatimService({
   userAgent: "AstroViewer Earth showcase",
   transport: {
@@ -205,11 +198,21 @@ const placeResolver = new NominatimService({
   },
 });
 
+const firmsService = new FirmsService({
+  authentication: { kind: "relay" },
+  endpoint: new URL("/api/firms/", location.origin).href,
+  timeoutMs: 120_000,
+});
+
 const italyCitiesUrl = new URL("./data/italy-cities.geojson", import.meta.url).href;
 const italyRegionsUrl = new URL("./data/italy-regions.geojson", import.meta.url).href;
 const spainRegionsUrl = new URL("./data/spain-regions.geojson", import.meta.url).href;
 const mediterraneanFerryRoutesUrl = new URL(
   "./data/mediterranean-ferry-routes.geojson",
+  import.meta.url,
+).href;
+const firmsAfricaSnapshotUrl = new URL(
+  "./data/firms-africa-2026-08-25.json",
   import.meta.url,
 ).href;
 const satelliteModelUrl = new URL(
@@ -238,6 +241,26 @@ async function loadGeoJSON(url: string): Promise<GeoJSONFeatureCollection> {
     throw new Error(`Unable to load GeoJSON: ${response.status} ${response.statusText}`);
   }
   return (await response.json()) as GeoJSONFeatureCollection;
+}
+
+type FirmsSnapshot = Omit<FirmsAreaResult, "detections"> & {
+  schemaVersion: number;
+  generatedAt: string;
+  sourceUrl: string;
+  selection: {
+    method: string;
+    inputDetectionCount: number;
+    outputDetectionCount: number;
+  };
+  detections: WildfireDetection[];
+};
+
+async function loadFirmsSnapshot(): Promise<FirmsSnapshot> {
+  const response = await fetch(firmsAfricaSnapshotUrl);
+  if (!response.ok) {
+    throw new Error(`Unable to load FIRMS snapshot: ${response.status}`);
+  }
+  return (await response.json()) as FirmsSnapshot;
 }
 
 function satelliteFootprint(longitudeDeg: number, latitudeDeg: number) {
@@ -1442,74 +1465,202 @@ async function scene06GeoJSONPoints(token: number): Promise<void> {
   await wait(1000, token);
 }
 
-async function scene07EuropeanWildfires(token: number): Promise<void> {
+async function scene07AfricanWildfires(token: number): Promise<void> {
   audit.scenes.push(7);
-  audit.sequencePhase = "scene07-european-wildfires";
+  audit.sequencePhase = "scene07-african-wildfires";
+  const queryCaptionStartedAt = performance.now();
 
   showCaption(
-    "07 / Data-driven fire styling",
-    "European summer fire clusters",
-    "Use an illustrative summer 2026 fixture to map fire intensity to marker size and hue.",
-    "const fires = viewer.addTerraPointSet(fireTable)\n" +
-      'viewer.setCatalogueShapeSize(fires, "intensity")\n' +
-      'viewer.setCatalogueShapeHue(fires, "intensity")',
+    "07 / NASA FIRMS · African fires",
+    "Query satellite fire detections",
+    "Astrospatial Services calls NASA FIRMS at runtime for VIIRS observations over Angola and southern DRC, 25–29 August 2026.",
+    "const result = await firms.queryArea({\n" +
+      '  source: "VIIRS_NOAA21_NRT",\n' +
+      "  area: { west: 11, south: -18, east: 25, north: -4 },\n" +
+      '  dayRange: 5, startDate: "2026-08-25"\n' +
+      "})",
   );
+
+  let sourceMode = "LIVE NASA FIRMS";
+  let inputDetectionCount = 0;
+  let allDetections: WildfireDetection[];
+  try {
+    const result = await firmsService.queryArea({
+      source: "VIIRS_NOAA21_NRT",
+      area: { west: 11, south: -18, east: 25, north: -4 },
+      dayRange: 5,
+      startDate: "2026-08-25",
+    });
+    check(token);
+    inputDetectionCount = result.detections.length;
+    allDetections = result.detections;
+  } catch (error) {
+    sourceMode = "OFFICIAL SNAPSHOT FALLBACK";
+    audit.warnings.push(`NASA FIRMS runtime query unavailable: ${String(error)}`);
+    const snapshot = await loadFirmsSnapshot();
+    check(token);
+    inputDetectionCount = snapshot.selection.inputDetectionCount;
+    allDetections = snapshot.detections;
+  }
+
+  const queryCaptionElapsedMs = performance.now() - queryCaptionStartedAt;
+  await wait(Math.max(0, 1800 - queryCaptionElapsedMs), token);
+
+  const strongest = [...allDetections]
+    .filter(({ fireRadiativePowerMw }) =>
+      Number.isFinite(fireRadiativePowerMw)
+    )
+    .sort(
+      (left, right) =>
+        (right.fireRadiativePowerMw ?? -Infinity) -
+        (left.fireRadiativePowerMw ?? -Infinity),
+    )
+    .slice(0, 500);
+  if (strongest.length < 500) {
+    throw new Error(`FIRMS returned only ${strongest.length} usable detections`);
+  }
+
+  showCaption(
+    "07 / NASA FIRMS · African fires",
+    "Select the strongest observations",
+    `FIRMS returned ${inputDetectionCount.toLocaleString()} normalised detections. Keep the 500 greatest Fire Radiative Power measurements for a readable, reproducible view.`,
+    "const strongest = result.detections\n" +
+      "  .filter(({ fireRadiativePowerMw }) =>\n" +
+      "    Number.isFinite(fireRadiativePowerMw))\n" +
+      "  .toSorted((a, b) => b.fireRadiativePowerMw - a.fireRadiativePowerMw)\n" +
+      "  .slice(0, 500)",
+  );
+  await wait(1600, token);
+
+  showCaption(
+    "07 / NASA FIRMS · African fires",
+    "Move to the observation region",
+    "Navigate to Angola and southern DRC before adding any source, so the point-layer lifecycle remains visually explicit.",
+    "await viewer.flyTo(18, -11, 1800)\n" +
+      "await viewer.flyToFoV(26, 1400)",
+  );
+  await viewer.flyTo(18, -11, 1800);
+  await viewer.flyToFoV(26, 1400);
+  await wait(900, token);
 
   const columns = [
     new MetadataColumn({ index: 0, name: "longitudeDeg", columnType: ColumnType.GEOM_RA, unit: "deg" }),
     new MetadataColumn({ index: 1, name: "latitudeDeg", columnType: ColumnType.GEOM_DEC, unit: "deg" }),
-    new MetadataColumn({ index: 2, name: "area", columnType: ColumnType.MAIN_NAME }),
-    new MetadataColumn({ index: 3, name: "intensity", columnType: ColumnType.NUMBER }),
-    new MetadataColumn({ index: 4, name: "criticality", columnType: ColumnType.NUMBER }),
+    new MetadataColumn({ index: 2, name: "detection", columnType: ColumnType.MAIN_NAME }),
+    new MetadataColumn({ index: 3, name: "frpMw", columnType: ColumnType.NUMBER, unit: "MW" }),
+    new MetadataColumn({ index: 4, name: "dayInWindow", columnType: ColumnType.NUMBER }),
+    new MetadataColumn({ index: 5, name: "confidence", columnType: ColumnType.STRING }),
+    new MetadataColumn({ index: 6, name: "acquiredAt", columnType: ColumnType.STRING }),
+    new MetadataColumn({ index: 7, name: "satellite", columnType: ColumnType.STRING }),
   ];
-  const rows = europeanFireClusters.map((fire) => [...fire]);
+  const detectionRow = (detection: WildfireDetection) => {
+    const date = detection.acquiredAt.slice(0, 10);
+    const dayInWindow = Number(date.slice(-2)) - 24;
+    return [
+      detection.longitudeDeg,
+      detection.latitudeDeg,
+      `${detection.satellite} · ${detection.acquiredAt.slice(0, 16)} UTC`,
+      detection.fireRadiativePowerMw ?? 0,
+      dayInWindow,
+      String(detection.confidence ?? "unknown"),
+      detection.acquiredAt,
+      detection.satellite,
+    ];
+  };
+  const rows = strongest.map(detectionRow);
+
+  showCaption(
+    "07 / NASA FIRMS · African fires",
+    "Add 500 uniform point sources",
+    "Convert the normalised service result into an Earth point table. Every marker initially shares the same size and colour.",
+    "const fires = viewer.addTerraPointSet(fireTable, {\n" +
+      '  name: "NASA FIRMS · VIIRS NOAA-21"\n' +
+      "})\n" +
+      'viewer.changeCatalogueColor(fires, "#ff7a2f")',
+  );
   const fires = viewer.addTerraPointSet(
     { columns, rows },
     {
-      name: "Illustrative European fire clusters",
-      description: "Synthetic summer 2026 demonstration fixture; not an observed fire archive",
+      name: "NASA FIRMS · strongest African detections",
+      description: "500 highest-FRP VIIRS NOAA-21 detections in the selected observation window",
     },
   );
-  viewer.changeCatalogueColor(fires, "#ff6b2c");
-  viewer.setCatalogueShapeSize(fires, "intensity");
-  viewer.setCatalogueShapeHue(fires, "intensity");
-
-  await viewer.flyTo(8, 42, 1800);
-  await viewer.flyToFoV(46, 1400);
+  viewer.changeCatalogueColor(fires, "#ff7a2f");
   provenance.textContent =
-    "Synthetic summer 2026 fire-cluster fixture · intensity and criticality are illustrative values";
+    `${sourceMode} · NASA LANCE FIRMS · VIIRS NOAA-21 NRT · ` +
+    `${inputDetectionCount.toLocaleString()} detections → 500 highest FRP`;
   await wait(2600, token);
 
   showCaption(
-    "07 / Data-driven fire styling",
-    "Critical clusters",
-    "Add black markers for the highest illustrative criticality class while retaining the intensity layer beneath.",
-    "const criticalFires = viewer.addTerraPointSet(criticalFireTable)\n" +
-      'viewer.changeCatalogueColor(criticalFires, "#050505")\n' +
-      'viewer.setCatalogueShapeSize(criticalFires, "intensity")',
+    "07 / NASA FIRMS · African fires",
+    "Size by Fire Radiative Power",
+    "Map the measured FRP column directly to marker size. Larger symbols identify detections with greater instantaneous radiant energy, not an emergency criticality rating.",
+    'viewer.setCatalogueShapeSize(fires, "frpMw")',
   );
-  const criticalRows = rows.filter((row) => row[4] === 3);
-  const criticalFires = viewer.addTerraPointSet(
-    { columns, rows: criticalRows },
-    {
-      name: "Critical fire clusters",
-      description: "Black markers identify illustrative criticality class 3",
-    },
-  );
-  viewer.changeCatalogueColor(criticalFires, "#050505");
-  viewer.setCatalogueShapeSize(criticalFires, "intensity");
-  await wait(2800, token);
+  viewer.setCatalogueShapeSize(fires, "frpMw");
+  await wait(2400, token);
 
   showCaption(
-    "07 / Data-driven fire styling",
-    "Release fire layers",
-    "Remove both temporary point catalogues before loading administrative footprints.",
-    "viewer.deleteTerraPointSet(criticalFires)\n" +
-      "viewer.deleteTerraPointSet(fires)",
+    "07 / NASA FIRMS · African fires",
+    "Hue by acquisition day",
+    "Map the day within the five-day window to hue, revealing how the observed spatial pattern changes from 25 to 29 August.",
+    'viewer.setCatalogueShapeHue(fires, "dayInWindow")',
   );
-  viewer.deleteTerraPointSet(criticalFires);
+  viewer.setCatalogueShapeHue(fires, "dayInWindow");
+  await wait(3400, token);
+
   viewer.deleteTerraPointSet(fires);
-  await wait(1000, token);
+  const cutoff = "2026-08-28T00:00:00Z";
+  const recentDetections = strongest.filter(
+    ({ acquiredAt }) => acquiredAt >= cutoff,
+  );
+  const earlierDetections = strongest.filter(
+    ({ acquiredAt }) => acquiredAt < cutoff,
+  );
+  const recentRows = recentDetections.map(detectionRow);
+  const earlierRows = earlierDetections.map(detectionRow);
+  const earlierFires = viewer.addTerraPointSet(
+    { columns, rows: earlierRows },
+    {
+      name: "Earlier FIRMS detections · 25–27 August",
+      description: "Earlier observations in the selected five-day window; not a declaration that a fire is extinguished",
+    },
+  );
+  const recentFires = viewer.addTerraPointSet(
+    { columns, rows: recentRows },
+    {
+      name: "Recent FIRMS detections · 28–29 August",
+      description: "Detections from the final 48 hours of the selected observation window",
+    },
+  );
+  viewer.changeCatalogueColor(earlierFires, "#050505");
+  viewer.changeCatalogueColor(recentFires, "#ff2f2f");
+  viewer.setCatalogueShapeSize(earlierFires, "frpMw");
+  viewer.setCatalogueShapeSize(recentFires, "frpMw");
+  showCaption(
+    "07 / NASA FIRMS · African fires",
+    "Recent and earlier detections",
+    `Red marks ${recentRows.length} detections from 28–29 August; black marks ${earlierRows.length} earlier observations. The temporal classes do not assert operational active or extinguished fire status.`,
+    'const cutoff = "2026-08-28T00:00:00Z"\n' +
+      "const recentDetections = strongest.filter(\n" +
+      "  ({ acquiredAt }) => acquiredAt >= cutoff)\n" +
+      "const earlierDetections = strongest.filter(\n" +
+      "  ({ acquiredAt }) => acquiredAt < cutoff)\n" +
+      'viewer.changeCatalogueColor(recentFires, "#ff2f2f")\n' +
+      'viewer.changeCatalogueColor(earlierFires, "#050505")',
+  );
+  await wait(5000, token);
+
+  showCaption(
+    "07 / NASA FIRMS · African fires",
+    "Release fire layers",
+    "Remove both observed point catalogues before continuing to geographic polygon layers.",
+    "viewer.deleteTerraPointSet(recentFires)\n" +
+      "viewer.deleteTerraPointSet(earlierFires)",
+  );
+  viewer.deleteTerraPointSet(recentFires);
+  viewer.deleteTerraPointSet(earlierFires);
+  await wait(1800, token);
 }
 
 async function scene08AdministrativeRegions(token: number): Promise<void> {
@@ -2216,7 +2367,7 @@ const showcaseScenes: Array<{
   { number: 4, title: "Standards-based WMTS imagery", run: scene04ScientificWMTS },
   { number: 5, title: "Raster compositing", run: scene05RasterCompositing },
   { number: 6, title: "World capitals and runtime context", run: scene06GeoJSONPoints },
-  { number: 7, title: "European wildfire clusters", run: scene07EuropeanWildfires },
+  { number: 7, title: "NASA FIRMS African fire detections", run: scene07AfricanWildfires },
   { number: 8, title: "Administrative regions", run: scene08AdministrativeRegions },
   { number: 9, title: "Mediterranean ferry routes", run: scene09MaritimeRoutes },
   { number: 10, title: "Geographic coordinate grid", run: scene10GeographicGrid },

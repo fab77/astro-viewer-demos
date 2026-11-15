@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "demo:a00": "vite src/demos/a00-astronomy-showcase --config src/demos/a00-astronomy-showcase/vite.config.mts",
+    "data:e00:firms": "node --env-file=.env scripts/generate-e00-firms-snapshot.mjs",
     "test:a00": "playwright test playwright/a00-current-smoke.spec.ts",
     "test:e00": "playwright test playwright/e00-current-smoke.spec.ts",
     "build": "node scripts/build-demos.mjs",
