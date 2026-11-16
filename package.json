@@ -27,7 +27,7 @@
   "homepage": "https://github.com/fab77/astro-viewer-demos#readme",
   "dependencies": {
     "astro-viewer": "^3.19.0",
-    "astrospatial-services": "^0.4.0"
+    "astrospatial-services": "^0.4.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
